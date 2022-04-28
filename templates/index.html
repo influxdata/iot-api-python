@@ -1,0 +1,18 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+    <title>IOT Center</title>
+</head>
+{% extends 'base.html' %}
+<body>
+    {% block content %}
+        <h1>Welcome to IOT Center</h1>
+        <p>The current time is {{time}}</p>
+    {% endblock %}
+
+</body>
+
+</html>
