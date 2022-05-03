@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from api.helper_functions import get_current_time
 from api import devices, write_data
 
@@ -15,18 +15,28 @@ def help_page():
     return render_template('help.html', time=get_current_time())
 
 
-@app.route('/devices')
+@app.route('/devices', methods=['GET', 'POST'])
 def get_devices():
-    device_id = 'todo'
-    response = devices.get_device(device_id)
-    # parse the response
-    return render_template('devices.html', device=response.device_id)
+    if request.method == 'GET':
+        return render_template('devices.html')
+    else:
+        device_id = devices.get_device('8fcbfbbb-d0db-40f5-8828-3f828b987a89')
+        return render_template('devices.html', device_id=device_id)
 
 
 @app.route('/create')
+def create():
+    return render_template('create.html', device_id=None)
+
+
+@app.route('/create_device', methods=['GET', 'POST'])
 def create_device():
-    response = devices.test_create_device()
-    return render_template('create.html', response=response)
+    if request.method == 'GET':
+        return render_template('devices.html', device_id=None)
+    else:
+        device_id = request.form.get('device_id_input', None)
+        device_id = devices.test_create_device(device_id)
+        return render_template('create.html', device_id=device_id)
 
 
 @app.route('/buckets')

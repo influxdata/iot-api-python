@@ -8,7 +8,25 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<p>{{response}}</p>
+<div>
+    <form method="post" action="/create_device">
+        <div class="form-group">
+            <label for="deviceIdInput">IoT Device Name</label>
+            <input type="text" class="form-control" id="deviceIdInput" name="device_id_input">
+        </div>
+        <div class="form-group">
+            <input type="submit" class="btn btn-primary" name="set" value="Register Device">
+        </div>
+    </form>
+</div>
+
+{% if device_id is not none %}
+    <div>
+        <p>Success! IoT device {{device_id}} has been registered.</p>
+    </div>
+{% endif %}
+
+
 
 {% endblock %}
 </body>

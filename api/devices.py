@@ -41,7 +41,6 @@ def get_buckets():
     return buckets
 
 
-
 # this checks if the device is already in the auth bucket
 # Should probably return a device
 
@@ -56,41 +55,47 @@ def get_device(device_id) -> {}:
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
 
-    # fix this
-    device_id = uuid4()
     query_api = QueryApi(influxdb_client)
-
-
-    device_filter = f"deviceId !== undefined ? flux` and r.deviceId == '${device_id}'` : flux` and r._field != 'token'"
-    flux_query = f"from(bucket: {config.get('APP', 'INFLUX_BUCKET_AUTH')}) " \
-                 f"|> range(start: 0) " \
-                 f"|> filter(fn: (r) => r._measurement == 'deviceauth'{device_filter}) " \
-                 f"|> last()"
+    device_id = str(device_id)
+    device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+    flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
+                 f'|> range(start: 0) ' \
+                 f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
+                 f'|> last()'
     devices = {}
 
-    query = ' from(bucket:"my-bucket")\
-        |> range(start: -60m)\
-        |> filter(fn:(r) => r._measurement == "deviceauth") '
     print(f"*** QUERY *** \n {flux_query}")
     # TODO FIX
-    query_api.query(flux_query)
-    return {}
+    response = query_api.query(flux_query)
+
+    # iterate through the result(s)
+    # TODO maybe change this to only show, device_id, auth_id, auth_token?
+    results = []
+    for table in response:
+        for record in table.records:
+            results.append((record.get_field(), record.get_value()))
+    return results
 
 
-def test_create_device():
+def test_create_device(device_id=None):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
 
-    device_id = str(uuid4())
-    created_at = str(datetime.now())
+    if device_id is None:
+        device_id = str(uuid4())
+
     write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
 
     point = Point('deviceauth').tag("deviceId", device_id).\
-        field('key', 'fake_auth_id').field('token', 'fake_auth_token')
+        field('key', f'fake_auth_id_{device_id}').field('token', f'fake_auth_token_{device_id}')
     client_response = write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
 
-    return client_response
+    if client_response is None:
+        return device_id
+
+    # Return None on failure
+    return None
 
 # Creates an authorization for a deviceId and writes it to a bucket
 def create_device(device_id) -> Authorization:
