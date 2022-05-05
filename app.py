@@ -68,9 +68,20 @@ def get_buckets():
     return render_template('buckets.html', buckets=buckets)
 
 
-@app.route('/test')
-def test():
-    # buckets = devices.get_buckets()
-    # return config.get('APP', 'INFLUX_URL')
+@app.route('/auth')
+def auth():
+    response = devices.create_authorization('test_id')
+    return render_template('auth.html')
 
-    return render_template('help.html')
+
+@app.route('/write', methods=['GET', 'POST'])
+def write():
+    # Pass in device_id
+    # Write data using the device_id?
+    #
+    if request.method == 'GET':
+        return render_template('write.html', device_id=None)
+    else:
+        device_id = request.form.get('device_id_input', None)
+        device_id = devices.write_measurements(device_id)
+        return render_template('write.html', device_id=device_id)
