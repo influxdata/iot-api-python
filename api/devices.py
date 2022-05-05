@@ -121,7 +121,7 @@ def get_device(device_id) -> {}:
     return results
 
 
-def test_create_device(device_id=None):
+def create_device(device_id=None):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
@@ -203,27 +203,27 @@ def get_measurements(device_id):
 
 
 # Creates an authorization for a deviceId and writes it to a bucket
-def create_device(device_id) -> Authorization:
-    device = get_device(device_id)
-    # TODO actually need to set up and run this
-    authorization_valid = device["key"]
-    if authorization_valid:
-        print(f"{device} \n This device ID is already registered and has an authorization.")
-    else:
-        print(f"createDeviceAuthorization: deviceId ={device_id}")
-        authorization = create_authorization(device_id)
-        influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                         token=config.get('APP', 'INFLUX_TOKEN'),
-                                         org=config.get('APP', 'INFLUX_ORG'))
-
-        write_api = influxdb_client.write_api(write_options=WriteOptions(batch_size=1))
-        point = Point("deviceauth") \
-            .tag("deviceId", device_id) \
-            .field("key", authorization.id) \
-            .field("token", authorization.token)
-        write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
-        write_api.close()
-        return authorization
+# def create_device(device_id) -> Authorization:
+#     device = get_device(device_id)
+#     # TODO actually need to set up and run this
+#     authorization_valid = device["key"]
+#     if authorization_valid:
+#         print(f"{device} \n This device ID is already registered and has an authorization.")
+#     else:
+#         print(f"createDeviceAuthorization: deviceId ={device_id}")
+#         authorization = create_authorization(device_id)
+#         influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+#                                          token=config.get('APP', 'INFLUX_TOKEN'),
+#                                          org=config.get('APP', 'INFLUX_ORG'))
+#
+#         write_api = influxdb_client.write_api(write_options=WriteOptions(batch_size=1))
+#         point = Point("deviceauth") \
+#             .tag("deviceId", device_id) \
+#             .field("key", authorization.id) \
+#             .field("token", authorization.token)
+#         write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
+#         write_api.close()
+#         return authorization
 
 
 # TODO

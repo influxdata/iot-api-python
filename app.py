@@ -10,11 +10,6 @@ def index():
     return render_template('index.html', time=get_current_time())
 
 
-@app.route('/help')
-def help_page():
-    return render_template('help.html', time=get_current_time())
-
-
 @app.route('/devices', methods=['GET', 'POST'])
 def get_devices():
     if request.method == 'GET':
@@ -35,7 +30,7 @@ def create_device():
         return render_template('devices.html', device_id=None)
     else:
         device_id = request.form.get('device_id_input', None)
-        device_id = devices.test_create_device(device_id)
+        device_id = devices.create_device(device_id)
         return render_template('create.html', device_id=device_id)
 
 
