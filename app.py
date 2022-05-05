@@ -85,3 +85,13 @@ def write():
         device_id = request.form.get('device_id_input', None)
         device_id = devices.write_measurements(device_id)
         return render_template('write.html', device_id=device_id)
+
+
+@app.route('/data', methods=['GET', 'POST'])
+def data():
+    if request.method == 'GET':
+        return render_template('data.html', data=None)
+    else:
+        device_id = request.form.get('device_id_input', None)
+        results = devices.get_measurements(device_id)
+        return render_template('data.html', data=results)

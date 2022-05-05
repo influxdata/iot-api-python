@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data</title>
+</head>
+<body>
+{% extends 'base.html' %}
+{% block content %}
+
+
+
+{% if data is none %}
+    <div>
+    <form method="post" action="/data">
+        <div class="form-group">
+            <label for="deviceIdInput">IoT Device Name</label>
+            <input type="text" class="form-control" id="deviceIdInput" name="device_id_input">
+        </div>
+        <div class="form-group">
+            <input type="submit" class="btn btn-primary" name="set" value="Query Data">
+        </div>
+    </form>
+</div>
+{% else %}
+    <table id="data" class="table table-striped">
+        <thead>
+          <tr>
+            <th>Time</th>
+              <th>Device</th>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in data %}
+            <tr>
+              <td>{{ result._time }}</td>
+                <td>{{ result.device }}</td>
+              <td>{{ result._field }}</td>
+              <td>{{ result._value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+  </table>
+{% endif %}
+
+{% endblock %}
+</body>
+</html>

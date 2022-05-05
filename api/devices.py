@@ -178,6 +178,30 @@ def write_measurements(device_id):
     return None
 
 
+def get_measurements(device_id):
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+
+    # Queries must be formatted with single and double quotes correctly
+    query_api = QueryApi(influxdb_client)
+    device_id = str(device_id)
+    device_filter = f'r.device == "{device_id}"'
+    flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET")}") ' \
+                 f'|> range(start: 0) ' \
+                 f'|> filter(fn: (r) => r._measurement == "environment" and {device_filter}) ' \
+                 f'|> last()'
+
+    response = query_api.query(flux_query)
+
+    # iterate through the result(s)
+    results = []
+    for table in response:
+        results.append(table.records[0].values)
+
+    return results
+
+
 # Creates an authorization for a deviceId and writes it to a bucket
 def create_device(device_id) -> Authorization:
     device = get_device(device_id)
