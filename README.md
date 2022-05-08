@@ -16,10 +16,12 @@ manage IoT devices, write data to InfluxDB, query data from InfluxDB, create vis
 From start to finish, you will:
 - create a UI dashboard using Jinja
 - install the influxdb-client package
-- create a configuration file for authentication with InfluxDB
-- create a virtual IoT device
-- write telemetry data to InfluxDB
-- query telemetry data in InfluxDB
+- [create a configuration file for authentication with InfluxDB](#create-config.ini)
+- [create a virtual IoT device](#create-iot-virtual-device)
+- [store virtual IoT device to InfluxDB using the API](#store-virtual-iot-device-to-influxdb)
+- [query bucket for IoT device using the API](#query-bucket-for-device)
+- [write telemetry data to InfluxDB using the API](#write-telemetry-data)
+- [query telemetry data in InfluxDB using the API](#query-telemetry-data)
 
 ## Contents
 1. [Setup InfluxDB](#setup-influxdb)
@@ -275,6 +277,7 @@ this file. Since every template will extend ```base.html``` we will also link bo
 </html>
 ```
 
+Now that you have your Flask app running, we will now connect an InfluxDB instance to your app. 
 
 ## Install InfluxDB
 
@@ -295,9 +298,385 @@ For a production application, we recommend you create a token with minimal permi
 
 {{% /note %}}
 
-## Send an API request
+## Configure IoT App
 
-Now that you have InfluxDB, an API token, and the Node.JS client library (with `iot-center-v2`), use the client library to send a request to the InfluxDB API.
+### Create config.ini
+
+The Python client library provides a client to easily interact with your InfluxDB instance. In order set up the client 
+with the correct information with connect to your InfluxDB instance, we will need to create a configuration file that the
+client can read from. 
+The client needs the following information:
+
+* your InfluxDB [API token](#authorization) with permission to query (_read_) buckets
+and create (_write_) authorizations for IoT devices.
+* your InfluxDB instance url
+* your InfluxDB org ID
+* your InfluxDB bucket names
+
+We will create a file ```config.ini``` in the top level directory of your project and place the configuration info within it.
+```ini
+[APP]
+INFLUX_URL = {{INFLUX_URL}}
+INFLUX_TOKEN = {{INFLUX_TOKEN}}
+INFLUX_ORG = {{INFLUX_ORG_ID}}
+INFLUX_BUCKET = {{INFLUX_BUCKET_FOR_TELEMETRY}}
+INFLUX_BUCKET_AUTH = {{INFLUX_BUCKET_FOR_DEVICES}}
+```
+
+The following is a sample configuration.
+```ini
+[APP]
+INFLUX_URL = https://us-west-2-2.aws.cloud2.influxdata.com/
+INFLUX_TOKEN = 52Pc_ZkJsRh1PKzlwrK8yO6jWSDh6WPAHbfqp-5aROz4zBnY2mvkKws9YoYzksGH3_Xp90rVqo2PRiajTxaUcw==
+INFLUX_ORG = bea7ea952287f70d
+INFLUX_BUCKET = sly's Bucket
+INFLUX_BUCKET_AUTH = devices_auth
+```
+
+
+## Create IoT Virtual Device
+You will now create a virtual IoT device. This device will generate weather data that you will store in InfluxDB. 
+Create a new directory called ```api``` under the top level and create a new file called ```sensor.py``` within the new directory.
+
+[//]: # Probably preferable to link the file rather than have the whole file written up()
+```python
+import json
+import random
+import urllib3
+
+
+http = urllib3.PoolManager()
+
+
+# Helper function to fetch lat lon data
+def fetch_json(url):
+    """Fetch JSON from url."""
+    response = http.request('GET', url)
+    if not 200 <= response.status <= 299:
+        raise Exception(f'[HTTP - {response.status}]: {response.reason}')
+    config_fresh = json.loads(response.data.decode('utf-8'))
+    return config_fresh
+
+
+class Sensor:
+    def __init__(self):
+        self.id = ''
+        self.temperature = None
+        self.pressure = None
+        self.humidity = None
+        self.geo = None
+
+    def generate_measurement(self):
+        return round(random.uniform(0, 100))
+
+    def geo(self):
+        """
+        Get GEO location from https://freegeoip.app/json/'.
+        :return: Returns a dictionary with `latitude` and `longitude` key.
+        """
+        try:
+            return fetch_json('https://freegeoip.app/json/')
+        except Exception:
+            return {
+                'latitude':  self.generate_measurement(),
+                'longitude':  self.generate_measurement(),
+            }
+```
+
+You will be using this Sensor object and its function ```generate_measurement()``` to simulate weather data.
+
+
+## Store Virtual IoT Device to InfluxDB
+You will now learn how to use the python client library to store the virtual device information within InfluxDB.
+Within your InfluxDB instance, you will have at least two buckets set up. 
+We will use the first bucket to store device information for your virtual device.
+The other bucket will be used to store telemetry data which we will learn more about later on in this guide.  
+
+Create a new file called ```devices.py``` within your ```api``` directory. This file will hold the core functionality for your app.
+
+```python
+import configparser
+from datetime import datetime
+from uuid import uuid4
+from influxdb_client import Authorization, InfluxDBClient, Permission, PermissionResource, Point, WriteOptions
+from influxdb_client.client.authorizations_api import AuthorizationsApi
+from influxdb_client.client.bucket_api import BucketsApi
+from influxdb_client.client.query_api import QueryApi
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+from api.sensor import Sensor
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+def create_device(device_id=None):
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+
+    if device_id is None:
+        device_id = str(uuid4())
+
+    write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
+
+    point = Point('deviceauth') \
+        .tag("deviceId", device_id) \
+        .field('key', f'fake_auth_id_{device_id}') \
+        .field('token', f'fake_auth_token_{device_id}')
+
+    client_response = write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
+
+    # write() returns None on success
+    if client_response is None:
+        return device_id
+
+    # Return None on failure
+    return None
+```
+
+The file imports all the necessary functionality that we will need for this app from ```influxdb_client```.
+At the top of the file, we read in our configuration file created earlier through 
+```python
+config = configparser.ConfigParser()
+config.read('config.ini')
+```
+
+```create_device``` stores your virtual device data by reading in a device_id and writing that information over to your first bucket.
+We begin by first initializing ```influxdb_client``` using our config. ```InfluxDBClient``` needs your url, token and org in order to
+create a connection to your InfluxDB instance.
+```python
+influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                  token=config.get('APP', 'INFLUX_TOKEN'),
+                                  org=config.get('APP', 'INFLUX_ORG'))
+```
+
+Using the ```InfluxDBClient``` we create a ```WriteApi``` instance that will allow us to write a record to a specified bucket.
+We then create the record we want to write to the bucket using ```Point```. In this case, ```deviceauth``` is the name 
+of the ```_measurement```. We use ```deviceId``` as the tag, and we include two separate fields named ```key``` and ```token``` to store 
+the device authorization information (more information on authorization will be provided further along in the guide). 
+We then use ```write_api``` to send the API request and write the record to your bucket. 
+```write_api``` returns ```None``` on success, so we check for any failures then return the ```device_id``` if the request
+was successful.
+```python
+point = Point('deviceauth') \
+        .tag("deviceId", device_id) \
+        .field('key', f'fake_auth_id_{device_id}') \
+        .field('token', f'fake_auth_token_{device_id}')
+
+ client_response = write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
+
+ # write() returns None on success
+ if client_response is None:
+     return device_id
+
+ # Return None on failure
+ return None
+```
+
+## Query Bucket For Device
+Now that we have written data to a bucket, you will now learn how use the client library to query for the device information.  
+
+Within ```devices.py``` create a new function called ```get_devices()```. This function will take in a ```device_id``` and 
+return a list of tuples that represent the records generated by the query.
+```python
+def get_device(device_id) -> {}:
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+
+    # Queries must be formatted with single and double quotes correctly
+    query_api = QueryApi(influxdb_client)
+    device_id = str(device_id)
+    device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+    flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
+                 f'|> range(start: 0) ' \
+                 f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
+                 f'|> last()'
+    devices = {}
+
+    response = query_api.query(flux_query)
+
+   results = []
+       for table in response:
+           for record in table.records:
+               results.append((record.get_field(), record.get_value()))
+    return results
+```
+
+Using the ```InfluxDBClient``` we create a ```QueryApi``` instance that will allow us to query a records from a specified bucket.
+Here we generate the query itself using Flux. Within the query, we set the bucket information, range, and query filter.
+Our query filters on ```_measurement``` ```deviceauth``` and searches for any device_id that that matches our passed in device_id.
+Additionally, we add a clause to search for ```_field```s that do not contain ```token``` as a value.
+```python
+device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
+           f'|> range(start: 0) ' \
+           f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
+           f'|> last()'
+```
+
+We send this query using the client and the client returns a ```FluxTable``` that we then parse into a list of tuples.
+```python
+# Samples results
+[('key', 'fake_auth_id_1'), ('key', 'fake_auth_id_2')]
+```
+
+## Write Telemetry Data
+Now that you know how to write data to a bucket, we will simulate telemetry data and write over to InfluxDB.  
+
+Within ```devices.py``` create a new function called ```write_measurements()```. This function will take in a ```device_id```
+and write simulated weather telemetry data to your second bucket.  
+We begin again by initializing our ```WriteAPI``` instance. We then initialize our ```Sensor``` and create a ```Point```
+that contains data for temperature, humidity, pressure, lat, and lon. We set the ```_measurement``` to ```environment```
+and use that as the main reference for our future queries.
+
+```python
+def write_measurements(device_id):
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+    write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
+    virtual_device = Sensor()
+    coord = virtual_device.geo()
+
+    point = Point("environment") \
+        .tag("device", device_id) \
+        .tag("TemperatureSensor", "virtual_bme280") \
+        .tag("HumiditySensor", "virtual_bme280") \
+        .tag("PressureSensor", "virtual_bme280") \
+        .field("Temperature", virtual_device.generate_measurement()) \
+        .field("Humidity", virtual_device.generate_measurement()) \
+        .field("Pressure", virtual_device.generate_measurement()) \
+        .field("Lat", coord['latitude']) \
+        .field("Lon", coord['latitude']) \
+        .time(datetime.utcnow())
+
+    print(f"Writing: {point.to_line_protocol()}")
+    client_response = write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET'), record=point)
+
+    # write() returns None on success
+    if client_response is None:
+        # TODO Maybe also return the data that was written
+        return device_id
+
+    # Return None on failure
+    return None
+```
+
+## Query Telemetry Data
+Once the telemetry data has been written into your bucket, you can send queries to InfluxDB to retrieve that data.  
+
+Within ```devices.py``` create a new function called ```get_measurements()```. This function will take in a ```device_id```
+and query for simulated weather telemetry data produced by your virtual device. Here we query the ```_measurement```
+```environment``` and query for all records where ```device``` matches the ```device_id```. We then parse the ```FluxTable```
+and return each record as a dict containing all the information from each record returned.
+
+```python
+def get_measurements(device_id):
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+
+    # Queries must be formatted with single and double quotes correctly
+    query_api = QueryApi(influxdb_client)
+    device_id = str(device_id)
+    device_filter = f'r.device == "{device_id}"'
+    flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET")}") ' \
+                 f'|> range(start: 0) ' \
+                 f'|> filter(fn: (r) => r._measurement == "environment" and {device_filter}) ' \
+                 f'|> last()'
+
+    response = query_api.query(flux_query)
+
+    # iterate through the result(s)
+    results = []
+    for table in response:
+        results.append(table.records[0].values)
+
+    return results
+```
+
+We then parse the ```FluxTable``` and return each record as a dict containing all the information from each record returned.
+
+```python
+# iterate through the result(s)
+    results = []
+    for table in response:
+        results.append(table.records[0].values)
+
+    return results
+```
+```python
+[
+   {
+      'result': '_result', 
+       'table': 0, 
+       '_start': datetime.datetime(1970, 1, 1, 0, 0, tzinfo=tzutc()), 
+       '_stop': datetime.datetime(2022, 5, 8, 22, 25, 10, 111697, tzinfo=tzutc()), 
+       '_time': datetime.datetime(2022, 5, 5, 17, 25, 48, 57014, tzinfo=tzutc()), 
+       '_value': 33.780799865722656, 
+       'HumiditySensor': 'virtual_bme280', 
+       'PressureSensor': 'virtual_bme280', 
+       'TemperatureSensor': 'virtual_bme280', 
+       '_field': 'Lat', 
+       '_measurement': 'environment', 
+       'device': 'test_device_508472435243'
+    }
+]
+```
+
+
+## Create Virtual Device Authorization with API 
+You will now learn how to use the python client library to create authorization for the virtual device.
+Authorization will give read/write permissions to your virtual device which will allow it to send data to InfluxDB.
+Within your InfluxDB instance, you will have at least two buckets set up. 
+We will use one of the buckets to store authorization information for your virtual device.
+The other bucket will be used to store telemetry data which we will learn more about later on in this guide. 
+
+Create a new file called ```devices.py``` within your ```api``` directory. 
+
+```python
+def create_authorization(device_id) -> Authorization:
+    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+                                     token=config.get('APP', 'INFLUX_TOKEN'),
+                                     org=config.get('APP', 'INFLUX_ORG'))
+
+    authorization_api = AuthorizationsApi(influxdb_client)
+
+    buckets_api = BucketsApi(influxdb_client)
+    buckets = buckets_api.find_bucket_by_name(config.get('APP', 'INFLUX_BUCKET_AUTH'))  # function returns only 1 bucket
+    bucket_id = buckets.id
+    org_id = buckets.org_id
+    desc_prefix = f'IoTCenterDevice: {device_id}'
+    # get bucket_id from bucket
+    org_resource = PermissionResource(org_id=config.get('APP', 'INFLUX_ORG'), type="buckets")
+    read = Permission(action="read", resource=org_resource)
+    write = Permission(action="write", resource=org_resource)
+    permissions = [read, write]
+    # authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
+    #                               permissions=permissions,
+    #                               description=desc_prefix)
+
+    authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
+                                  permissions=permissions,
+                                  description=desc_prefix)
+
+    # request = authorization_api.find_authorizations()
+    # return request
+
+    # request = authorization_api.create_authorization(authorization)
+    # return request
+
+    request = authorization_api.create_authorization(org_id=org_id, permissions=permissions)
+    return request
+```
+
+```create_authorization()```
+
+
+## Send API Requests
+Now that you have InfluxDB, an API token, and the Python client library, you will use the client library to send a request to the InfluxDB API.
+
 
 #### Example: list API endpoints
 
@@ -344,21 +723,9 @@ node
 {{< /code-tabs-wrapper >}}
 
 
-## Configure IoT Center
 
-env.js
 
-### Add your InfluxDB API token
-
-IoT Center server needs an [API token](#authorization) with permission to query (_read_) buckets
-and create (_write_) authorizations for IoT devices.
-Use the All-Access token you created in [Add an InfluxDB All-Access token](#add-an-influxdb-all-access-token).
-
-### Add your InfluxDB URL
-
-### Add your InfluxDB organization
-
-### Introducing IoT Center
+## Introducing IoT Center
 
 The IoT Center architecture has four layers:
 
@@ -387,37 +754,6 @@ If no point exists (i.e., the device is not registered), IoT Center server uses 
 3. `POST` request to `/api/v2/authorizations` creates an authorization with the description **IoT Center: `DEVICE_ID`** and write permission to the `INFLUX_BUCKET` bucket.
 4. `POST` request  to `/api/v2/write` writes a `deviceauth` point with device ID, API token, and authorization ID to `INFLUX_BUCKET_AUTH`.
 
-#### Example: create a device
-
-{{< code-tabs-wrapper >}}
-{{% code-tabs %}}
-[Node.js](#nodejs)
-{{% /code-tabs %}}
-{{% code-tab-content %}}
-
-The IoT Center server IoT Center `createDevice()` function uses [`@influxdata/influxdb-client-apis`]() to create an authorization
-and write device information to InfluxDB.
-
-```js
-async function createDevice(deviceId) {
-  console.log(`createDevice: deviceId=${deviceId}`)
-
-  const writeApi = influxdb.getWriteApi(INFLUX_ORG, INFLUX_BUCKET_AUTH)
-  const createdAt = new Date().toISOString()
-  const point = new Point('deviceauth')
-    .tag('deviceId', deviceId)
-    .stringField('createdAt', createdAt)
-  writeApi.writePoint(point)
-  await writeApi.close()
-  const {id: key, token} = await createDeviceAuthorization(deviceId)
-  return {deviceId, createdAt, key, token}
-}
-```
-
-{{% /code-tab-content %}}
-{{< /code-tabs-wrapper >}}
-
-{{% caption %}} IoT Center [/app/server/influxdb/authorizations.js](https://github.com/bonitoo-io/iot-center-v2/blob/b3bfce7ee9f5f045cfc8d881a9819f5dd9ad7a35/app/server/influxdb/authorizations.js#L61){{% /caption %}}
 
 ### IoT Center: list registered devices
 
@@ -465,114 +801,4 @@ const fluxQuery = flux`from(bucket:${INFLUX_BUCKET_AUTH})
 
 IoT Center displays configuration details for a registered IoT device.
 IoT Center API composes device configuration from the device's authorization and your InfluxDB configuration properties.
-
-#### Example
-
-https://github.com/bonitoo-io/iot-center-v2/blob/10fd78e67ccf093dedbed9eed88439423203c8a2/app/server/apis/index.js#L58
-
-### IoT Center: unregister a device
-
-To _unregister_ a device, IoT Center deletes the device authorization from your InfluxDB organization with the following steps:
-
-1. When you click the "Delete" button, IoT Center UI sends a `DELETE` request to the `/api/devices/DEVICE_ID` IoT Center API endpoint.
-2. IoT Center server retrieves the list of IoT Center authorizations and finds the authorization that matches the device ID.
-3. IoT Center sends a `DELETE` request to the `/api/v2/authorizations/AUTHORIZATION_ID` InfluxDB API endpoint.
-
-## Write data to InfluxDB
-
-{{% note %}}
-
-To learn more, see [Write data with the API](/influxdb/v2.1/write-data/developer-tools/api/)
-
-{{% /note %}}
-
-### Batch writes with client libraries
-
-#### Batch writes with the Javascript client library
-
-[influxdb-client-js](https://github.com/influxdata/influxdb-client-js/) provides features like batch writes, retries, and error handling necessary for production-ready applications.
-Batch writes reduce network use to make your application more efficient.
-1. to instantiate a point writer from the
-2. The [`writeApi.writePoint(point)`](https://github.com/influxdata/influxdb-client-js/blob/d76b1fe8c4000d7614f44d696c964cc4492826c6/packages/core/src/impl/WriteApiImpl.ts#L256) function converts each new point to [line protocol]() and adds the line to an array in a `WriteBuffer` object.
-3. [`writeApi.flush()`]() invokes the WriteBuffer's [`writeApi.sendBatch()`](https://github.com/influxdata/influxdb-client-js/blob/d76b1fe8c4000d7614f44d696c964cc4492826c6/packages/core/src/impl/WriteApiImpl.ts#L147)
-function to batch the points and send each batch to the
-InfluxDB `/api/v2/write` endpoint.
-
-{{% api-endpoint method="POST" endpoint="/api/v2/write" %}}
-
-### IoT Center: write device data to InfluxDB
-
-The IoT Center **virtual device** emulates a real IoT device by generating measurement data and writing the data to InfluxDB.
-Use the virtual device to demonstrate the IoT Center dashboard and test the InfluxDB API before you advance to adding physical devices or other clients.
-
-IoT Center provides a "Write Missing Data" button that generates `environment`
-(temperature, humidity, pressure, CO2, TVOC, latitude, and longitude) [measurement]() data for the virtual device.
-The button generates measurements for every minute over the last seven days and
-writes the generated measurement data to the InfluxDB bucket you configured.
-
-To write the measurements to the bucket, IoT Center uses the `writeEmulatedData(...)` function
-in **DevicePage.tsx**. `writeEmulatedData(...)` takes the following steps to write data to InfluxDB:
-1. Configures a new instance of the InfluxDB client
-   ```js
-   const influxDB = new InfluxDB({url, token})
-   ```
-2. To configure the client for writing, calls the `getWriteApi()`  with organization, bucket, timestamp precision, batch size, and default tags
-   ```js
-   const writeApi = influxDB.getWriteApi(org, bucket, 'ns', {
-     batchSize: batchSize + 1,
-     defaultTags: {clientId: id},
-   })
-   ```
-3. To write a data point, calls the [`writeApi.writePoint(point)`](https://github.com/influxdata/influxdb-client-js/blob/d76b1fe8c4000d7614f44d696c964cc4492826c6/packages/core/src/impl/WriteApiImpl.ts#L256)
-   client library function
-4. Internally, `writeApi.writePoint(point)` converts each new point to
-   [line protocol]() and adds the line to an array in a `WriteBuffer` object.
-5. Calls the [`writeApi.flush()`]() client library function.
-6. Internally, `writeApi.flush()` calls the `writeApi.sendBatch()`](https://github.com/influxdata/influxdb-client-js/blob/d76b1fe8c4000d7614f44d696c964cc4492826c6/packages/core/src/impl/WriteApiImpl.ts#L147)
-   client library function to write the points in batches to the `/api/v2/write` InfluxDB API endpoint.
-
-
-#### Example: batch and write points
-
-```python
-
-```
-
-
-### IoT Center: device dashboard
-
-#### Example: query virtual device data with Flux
-
-IoT Center uses the following Flux query to retrieve `environment` measurements:
-
-```js
-import "influxdata/influxdb/v1"    
-from(bucket: "iot_center")
- |> range(start: ${fluxDuration(timeStart)})
- |> filter(fn: (r) => r._measurement == "environment")
- |> filter(fn: (r) => r["_field"] == "Temperature" or r["_field"] == "TVOC" or r["_field"] == "Pressure" or r["_field"] == "Humidity" or r["_field"] == "CO2")
- |> filter(fn: (r) => r.clientId == "virtual_device")
- |> v1.fieldsAsCols()
-```
-
-#### Query result sample
-
-The query returns virtual device `environment` measurements that contain
-any of the fields **Temperature**, **TVOC**, **Pressure**, **Humidity**, or **CO2**.
-
-_measurement  |  _start  |  _stop  |  _time  |  clientId  |  CO2  |  CO2Sensor  |  GPSSensor  |  Humidity  |  HumiditySensor  |  Pressure  |  PressureSensor  |  Temperature  |  TemperatureSensor  |  TVOC  |  TVOCSensor |
-| environment | 2022-02-08T22:38:31.329Z | 2022-02-15T22:38:31.329Z | 2022-02-08T22:39:00.000Z | virtual_device | 865 | virtual_CO2Sensor | virtual_GPSSensor | 32 | virtual_HumiditySensor | 980.1 | virtual_PressureSensor | 16.8 | virtual_TemperatureSensor | 564 | virtual_TVOCSensor |
-| environment | 2022-02-08T22:38:31.329Z | 2022-02-15T22:38:31.329Z | 2022-02-08T22:40:00.000Z | virtual_device | 867 | virtual_CO2Sensor | virtual_GPSSensor | 31.8 | virtual_HumiditySensor | 980.3 | virtual_PressureSensor | 17.2 | virtual_TemperatureSensor | 565 | virtual_TVOCSensor |
-| environment | 2022-02-08T22:38:31.329Z | 2022-02-15T22:38:31.329Z | 2022-02-08T22:41:00.000Z | virtual_device | 869 | virtual_CO2Sensor | virtual_GPSSensor | 31.4 | virtual_HumiditySensor | 980.3 | virtual_PressureSensor | 17 | virtual_TemperatureSensor | 565 | virtual_TVOCSensor |
-
-### IoT device dashboard
-
-IoT Center provides a dashboard of data visualizations for each registered device.
-To view the device dashboard, on the "Virtual Device" page, click the
-"Device Dashboard" button.
-IoT Center UI `DashboardPage` executes the following steps to generate a dashboard visualization:
-1. Calls the
-[`getQueryApi(org)`]() client library function to configure the client for querying.
-2. Calls the `queryTable(queryApi, query, options)` IoT Center function with the query configuration and the [Flux]() query
-3. Returns a Promise that resolves with query result data as a [Giraffe Table interface](https://github.com/influxdata/giraffe/).
 

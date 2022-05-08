@@ -1,79 +1,21 @@
-from datetime import datetime
-
 import configparser
-import json
-import random
-import os
-import urllib3
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 from influxdb_client import Authorization, InfluxDBClient, Permission, PermissionResource, Point, WriteOptions
-from influxdb_client.client.query_api import QueryOptions
 from influxdb_client.client.authorizations_api import AuthorizationsApi
 from influxdb_client.client.bucket_api import BucketsApi
 from influxdb_client.client.query_api import QueryApi
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-# Set up configuration file needed to reach influxdb
-# config = {
-#     "id": os.getenv("VIRTUAL_DEVICE_NAME"),
-#     "influx_url": os.getenv("INFLUX_URL"),
-#     "influx_token": os.getenv("INFLUX_TOKEN"),
-#     "influx_org": os.getenv("INFLUX_ORG"),
-#     "influx_bucket": os.getenv("INFLUX_BUCKET"),
-#     "influx_bucket_auth": os.getenv("INFLUX_BUCKET_AUTH")
-# }
+from api.sensor import Sensor
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-http = urllib3.PoolManager()
 
-
-def generate_measurement():
-    return round(random.uniform(0, 100))
-
-
-def measure():
-    """
-    Get measure from bme280 or default values.
-    :return: Returns object with properties: temperature, pressure and humidity.
-    """
-
-    measurements = {
-        "temperature": generate_measurement(),
-        "pressure": generate_measurement(),
-        "humidity": generate_measurement()
-    }
-    return measurements
-
-
-def geo():
-    """
-    Get GEO location from https://freegeoip.app/json/'.
-    :return: Returns a dictionary with `latitude` and `longitude` key.
-    """
-    try:
-        return fetch_json('https://freegeoip.app/json/')
-    except Exception:
-        return {
-            'latitude':  generate_measurement(),
-            'longitude':  generate_measurement(),
-        }
-
-
-def fetch_json(url):
-    """Fetch JSON from url."""
-    response = http.request('GET', url)
-    if not 200 <= response.status <= 299:
-        raise Exception(f'[HTTP - {response.status}]: {response.reason}')
-    config_fresh = json.loads(response.data.decode('utf-8'))
-    return config_fresh
-
-
-def get_config():
-    print(config.get('APP', 'INFLUX_URL'))
-    return config
+# TODO use global instance after tutorial guide has been written
+# influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
+#                                  token=config.get('APP', 'INFLUX_TOKEN'),
+#                                  org=config.get('APP', 'INFLUX_ORG'))
 
 
 def get_buckets():
@@ -86,15 +28,6 @@ def get_buckets():
     return buckets
 
 
-# this checks if the device is already in the auth bucket
-# Should probably return a device
-
-#  Gets devices or a particular device when deviceId is specified. Tokens
-#  are not returned unless deviceId is specified. It can also return devices
-#  with empty/unknown key, such devices can be ignored (InfluxDB authorization is not associated).
-#  @param deviceId optional deviceId
-#  @returns promise with an Record<deviceId, {deviceId, createdAt, updatedAt, key, token}>.
-
 def get_device(device_id) -> {}:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=config.get('APP', 'INFLUX_TOKEN'),
@@ -102,6 +35,7 @@ def get_device(device_id) -> {}:
 
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
+    # query_api = influxdb_client.query_api()
     device_id = str(device_id)
     device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
     flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
@@ -151,19 +85,19 @@ def write_measurements(device_id):
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
     write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
-
-    coord = geo()
+    virtual_device = Sensor()
+    coord = virtual_device.geo()
 
     point = Point("environment") \
         .tag("device", device_id) \
         .tag("TemperatureSensor", "virtual_bme280") \
         .tag("HumiditySensor", "virtual_bme280") \
         .tag("PressureSensor", "virtual_bme280") \
-        .field("Temperature", generate_measurement()) \
-        .field("Humidity", generate_measurement()) \
-        .field("Pressure", generate_measurement()) \
+        .field("Temperature", virtual_device.generate_measurement()) \
+        .field("Humidity", virtual_device.generate_measurement()) \
+        .field("Pressure", virtual_device.generate_measurement()) \
         .field("Lat", coord['latitude']) \
-        .field("Lon", coord['longitude']) \
+        .field("Lon", coord['latitude']) \
         .time(datetime.utcnow())
 
     print(f"Writing: {point.to_line_protocol()}")
