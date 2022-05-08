@@ -18,23 +18,20 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="#">About</a>
-                </li>
                 <li>
                     <a class="nav-link" href="{{url_for('get_devices')}}">Devices</a>
                 </li>
                 <li>
+                    <a class="nav-link" href="{{url_for('create')}}">Create Device</a>
+                </li>
+                <li>
+                    <a class="nav-link" href="{{url_for('write')}}">Write Data</a>
+                </li>
+                <li>
+                    <a class="nav-link" href="{{url_for('data')}}">Query Data</a>
+                </li>
+                <li>
                     <a class="nav-link" href="{{url_for('get_buckets')}}">Buckets</a>
-                </li>
-                <li>
-                    <a class="nav-link" href="{{url_for('create')}}">Create</a>
-                </li>
-                <li>
-                    <a class="nav-link" href="{{url_for('write')}}">Write</a>
-                </li>
-                <li>
-                    <a class="nav-link" href="{{url_for('data')}}">Data</a>
                 </li>
                 <li>
                     <a class="nav-link" href="{{url_for('auth')}}">Auth</a>
