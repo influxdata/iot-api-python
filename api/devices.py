@@ -28,7 +28,7 @@ def get_buckets():
     return buckets
 
 
-def get_device(device_id) -> {}:
+def get_device() -> {}:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
@@ -36,8 +36,8 @@ def get_device(device_id) -> {}:
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
     # query_api = influxdb_client.query_api()
-    device_id = str(device_id)
-    device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+    # device_id = str(device_id)
+    device_filter = f'r._field != "token"'
     flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
                  f'|> range(start: 0) ' \
                  f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
@@ -48,10 +48,11 @@ def get_device(device_id) -> {}:
 
     # iterate through the result(s)
     # TODO maybe change this to only show, device_id, auth_id, auth_token?
+    # iterate through the result(s)
     results = []
     for table in response:
-        for record in table.records:
-            results.append((record.get_field(), record.get_value()))
+        results.append(table.records[0].values)
+
     return results
 
 

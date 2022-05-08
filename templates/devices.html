@@ -8,15 +8,32 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<form method="post" action="/devices">
-    <input type="submit" class="btn btn-primary" name="get" value="get_value">
-    <input type="submit" class="btn btn-primary" name="set" value="set_value">
-</form>
-
-{% if device_id is not none %}
-    <div>{{device_id}}</div>
+{% if data is none %}
+    <div>
+        <p>You currently do not have any virtual IoT devices registered.</p>
+    </div>
 {% else %}
-    <div>The Default Thing</div>
+    <caption>The following is a list of your registered IoT devices.</caption>
+    <table id="data" class="table table-striped">
+        <thead>
+          <tr>
+            <th>Time</th>
+              <th>Device</th>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in data %}
+            <tr>
+              <td>{{ result._time }}</td>
+                <td>{{ result.deviceId }}</td>
+              <td>{{ result._field }}</td>
+              <td>{{ result._value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+  </table>
 {% endif %}
 {% endblock %}
 </body>

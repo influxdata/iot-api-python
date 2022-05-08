@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from api.helper_functions import get_current_time
-from api import devices, write_data
+from api import devices
 
 app = Flask(__name__, template_folder='templates')
 
@@ -12,11 +12,11 @@ def index():
 
 @app.route('/devices', methods=['GET', 'POST'])
 def get_devices():
-    if request.method == 'GET':
-        return render_template('devices.html')
+    result = devices.get_device()
+    if not result:
+        return render_template('devices.html', data=None)
     else:
-        device_id = devices.get_device('8fcbfbbb-d0db-40f5-8828-3f828b987a89')
-        return render_template('devices.html', device_id=device_id)
+        return render_template('devices.html', data=result)
 
 
 @app.route('/create')
@@ -24,10 +24,11 @@ def create():
     return render_template('create.html', device_id=None)
 
 
+# On submit function for /create
 @app.route('/create_device', methods=['GET', 'POST'])
 def create_device():
     if request.method == 'GET':
-        return render_template('devices.html', device_id=None)
+        return render_template('create.html', device_id=None)
     else:
         device_id = request.form.get('device_id_input', None)
         device_id = devices.create_device(device_id)
@@ -59,7 +60,7 @@ def get_buckets():
     #  'schema_type': 'implicit',
     #  'type': 'user',
     #  'updated_at': datetime.datetime(2022, 3, 15, 17, 22, 33, 731038, tzinfo=tzutc())}
-    # parse the response
+    # parse the response and create a table instead
     return render_template('buckets.html', buckets=buckets)
 
 
@@ -71,9 +72,6 @@ def auth():
 
 @app.route('/write', methods=['GET', 'POST'])
 def write():
-    # Pass in device_id
-    # Write data using the device_id?
-    #
     if request.method == 'GET':
         return render_template('write.html', device_id=None)
     else:

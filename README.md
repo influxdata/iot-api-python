@@ -1,6 +1,4 @@
-## Build a starter Python3 IoT app with the InfluxDB API and client libraries
-
-## Introduction
+## Build a starter Python IoT app with the InfluxDB API and client libraries
 
 This guide is for python developers who want to build Internet-of-Things (IoT) applications using the InfluxDB API and client libraries.
 InfluxDB API client libraries are maintained by InfluxData and the user community. As a developer, client libraries enable you to take advantage of:
@@ -13,30 +11,19 @@ deconstruct the flow of events and data between the app, devices, and InfluxDB.
 You'll see code samples that use InfluxDB API python client libraries to
 manage IoT devices, write data to InfluxDB, query data from InfluxDB, create visualizations, and monitor the health of devices and the application itself.
 
-From start to finish, you will:
-- create a UI dashboard using Jinja
-- install the influxdb-client package
-- [create a configuration file for authentication with InfluxDB](#create-config.ini)
-- [create a virtual IoT device](#create-iot-virtual-device)
-- [store virtual IoT device to InfluxDB using the API](#store-virtual-iot-device-to-influxdb)
-- [query bucket for IoT device using the API](#query-bucket-for-device)
-- [write telemetry data to InfluxDB using the API](#write-telemetry-data)
-- [query telemetry data in InfluxDB using the API](#query-telemetry-data)
 
 ## Contents
-1. [Setup InfluxDB](#setup-influxdb)
-1. [InfluxDB API basics](#influxdb-api-basics)
-1. [Authorization and authentication in InfluxDB](#authorization-and-authentication-in-influxdb)
-1. Start with an API client library
-1. Create a bucket
-  1. Measurements, time series
-  2. Measurement schemas (aka bucket schemas)
-1. [Write data to InfluxDB](#write-data-to-influxdb)
-  1. Write line protocol
-1. [Query InfluxDB](#query-influxdb)
-  1. Send a Flux query
-  1. Aggregate and downsample your data
-1. Create data visualizations
+From start to finish, you will:
+- [Create a UI dashboard using Jinja](#create-iot-center-dashboard)
+- [Setup InfluxDB](#install-influxdb)
+- [Install influxdb-client package](#install-influxdb-client-package)
+- [Create a configuration file for authentication with InfluxDB](#create-config.ini)
+- [Create a virtual IoT device](#create-iot-virtual-device)
+- [Store virtual IoT device to InfluxDB using the API](#store-virtual-iot-device-to-influxdb)
+- [Query bucket for IoT device using the API](#query-bucket-for-device)
+- [Write telemetry data to InfluxDB using the API](#write-telemetry-data)
+- [Query telemetry data in InfluxDB using the API](#query-telemetry-data)
+
 
 ## InfluxDB API basics
 
@@ -167,7 +154,17 @@ To learn more about InfluxDB data elements, schemas, and design principles, see 
 
 {{% /note %}}
 
-## Create IoT Center Dashboard
+## Introducing IoT Center
+
+The IoT Center architecture has four layers:
+
+- **InfluxDB API**: InfluxDB v2 API.
+- **IoT device**: Virtual or physical devices write IoT data to the InfluxDB API.
+- **IoT Center UI**: User interface sends requests to IoT Center server and renders views for the browser.
+- **IoT Center server**: Server and API receives requests from the UI, sends requests to InfluxDB,
+  and processes responses from InfluxDB.
+
+## Create IoT Center 
 You will be using Flask alongside Jinja to create your IoT Center application. 
 Flask is a micro web framework that lets you develop web applications easily.
 Jinja is a web template engine used to help render the UI. 
@@ -299,6 +296,13 @@ For a production application, we recommend you create a token with minimal permi
 {{% /note %}}
 
 ## Configure IoT App
+
+### Install influxdb-client Package
+Use pip to install the influxdb-client package in your virtual environment.
+Additional information regarding the package can be found [here](https://pypi.org/project/influxdb-client/)
+```bash
+$ pip install influxdb-client
+```
 
 ### Create config.ini
 
@@ -454,7 +458,7 @@ Using the ```InfluxDBClient``` we create a ```WriteApi``` instance that will all
 We then create the record we want to write to the bucket using ```Point```. In this case, ```deviceauth``` is the name 
 of the ```_measurement```. We use ```deviceId``` as the tag, and we include two separate fields named ```key``` and ```token``` to store 
 the device authorization information (more information on authorization will be provided further along in the guide). 
-We then use ```write_api``` to send the API request and write the record to your bucket. 
+We then use ```write_api``` to send the API request to ```/api/v2/write``` and write the record to your bucket. 
 ```write_api``` returns ```None``` on success, so we check for any failures then return the ```device_id``` if the request
 was successful.
 ```python
@@ -674,131 +678,39 @@ def create_authorization(device_id) -> Authorization:
 ```create_authorization()```
 
 
-## Send API Requests
-Now that you have InfluxDB, an API token, and the Python client library, you will use the client library to send a request to the InfluxDB API.
+## Connecting the UI to the API
+Now that the core functionality has been implemented, we can now create a UI to perform these requests.
+Your IoT Dashboard will have four main pages.
+* Query Devices
+* Create Devices
+* Write Data
+* Query Data
 
+Within your templates directory, create the following files 
+* ```create.html```(link outs to the files. UI code explanation out of scope) (Page to create virutal IoT device)
+* ```data.html``` (Page to query for telemetry data)
+* ```devices.html``` (Page to query for device data)
+* ```write.html``` (Page to write telemetry data)
 
-#### Example: list API endpoints
+Once those files have been created, update ```base.html``` and ```app.py``` to connect the routes.
+Without going into details regarding the UI, ```app.py``` serves our routes and runs our core logic. 
 
-Use a client library to retrieve a list of InfluxDB API endpoints.
+For example, in our ```data``` route, we retrieve ```device_id_input``` from ```data.html``` when user input is submitted 
+and call ```get_measurements()``` with the provided input. After the query is ran, we re-render ```data.html``` with the query results. 
 
-{{% api-endpoint method="GET" endpoint="http://localhost:8086/api/v2"%}}
-
-{{< code-tabs-wrapper >}}
-{{% code-tabs %}}
-[Node.js](#nodejs)
-{{% /code-tabs %}}
-{{% code-tab-content %}}
-
-1. Copy the example below and replace the INFLUX_URL and INFLUX_TOKEN values with your own.
-
-```js
-
-#!/usr/bin/env node
-
-const { InfluxDB } = require('@influxdata/influxdb-client')
-const { RootAPI } = require('@influxdata/influxdb-client-apis')
-
-const INFLUX_URL='http://192.168.1.2:8086'
-const INFLUX_TOKEN='29Ye1KH9VkASPR2DSfRfFd82OwGD-5HWkBj0Ju_m-DTgT4PHakgweD3p87mp45Y633njDllKkD5wVc0zMCVhIw=='
-
-const influxdb = new InfluxDB({url: INFLUX_URL, token: INFLUX_TOKEN})
-const rootAPI = new RootAPI(influxdb)
-
-rootAPI.getRoutes().then(routes => console.log(routes))
-
+```python
+@app.route('/data', methods=['GET', 'POST'])
+def data():
+    if request.method == 'GET':
+        return render_template('data.html', data=None)
+    else:
+        device_id = request.form.get('device_id_input', None)
+        results = devices.get_measurements(device_id)
+        return render_template('data.html', data=results)
 ```
 
-2. From your `iot-center-v2` directory, launch the `node` REPL.
-
-```sh
-
-node
-
+Once the correct files have been created and updated, you can run the app to view the completed IoT Center at 
+```http://localhost:5000```
+```bash
+flask run
 ```
-
-3. At the prompt, paste the example code (from _Step 1_) and press `Enter`.
-
-{{% /code-tab-content %}}
-{{< /code-tabs-wrapper >}}
-
-
-
-
-## Introducing IoT Center
-
-The IoT Center architecture has four layers:
-
-- **InfluxDB API**: InfluxDB v2 API.
-- **IoT device**: Virtual or physical devices write IoT data to the InfluxDB API.
-- **IoT Center UI**: User interface sends requests to IoT Center server and renders views for the browser.
-- **IoT Center server**: Server and API receives requests from the UI, sends requests to InfluxDB,
-  and processes responses from InfluxDB.
-
-### IoT Center: register and list IoT devices
-
-The IoT Center **Device Registrations** page lists registered IoT devices
-and lets you register new devices.
-In IoT Center, a **registered device** is a virtual or physical IoT device with a unique InfluxDB authorization.
-For each registered device, you can do the following:
-- view a dashboard with data visualizations
-- view configuration
-- remove the device
-
-### IoT Center: register a device
-
-When you click the "Register" button, IoT Center UI sends a request to the `/api/devices/DEVICE_ID` IoT Center server endpoint. In response, IoT Center server queries InfluxDB to find a point with device ID in `INFLUX_BUCKET_AUTH`.
-If no point exists (i.e., the device is not registered), IoT Center server uses the InfluxDB client library to send the following API requests:
-
-2. `POST` request to `/api/v2/write` writes a `deviceauth` point with device ID to `INFLUX_BUCKET_AUTH` bucket.
-3. `POST` request to `/api/v2/authorizations` creates an authorization with the description **IoT Center: `DEVICE_ID`** and write permission to the `INFLUX_BUCKET` bucket.
-4. `POST` request  to `/api/v2/write` writes a `deviceauth` point with device ID, API token, and authorization ID to `INFLUX_BUCKET_AUTH`.
-
-
-### IoT Center: list registered devices
-
-To list registered devices, the IoT Center UI [DevicesPage](https://github.com/bonitoo-io/iot-center-v2/blob/3118c6576ad7bccf0b84b63f95350bdaa159324e/app/ui/src/pages/DevicesPage.tsx) component sends a request to the `/api/devices` IoT Center server endpoint.
-{{/* Source: https://github.com/bonitoo-io/iot-center-v2/blob/3118c6576ad7bccf0b84b63f95350bdaa159324e/app/ui/src/pages/DevicesPage.tsx */}}
-
-When IoT Center server receives the request, the server calls the [`getDevices()`](ttps://github.com/bonitoo-io/iot-center-v2/blob/f5b4a0b663e2e14bcd4f6fddb35cab2de216e6b6/app/server/influxdb/devices.js#L16) function.
-`getDevices()` does the following:
-
-1. Instantiates a query client from the InfluxDB client library.
-2. Builds a Flux query to retrieve all points with the `deviceauth` measurement from
-   the `INFLUX_BUCKET_AUTH` bucket.
-3. Returns a `Promise` that sends the query to the `/api/v2/query` InfluxDB API endpoint and iterates over devices in the response.
-
-#### Example
-
-{{< code-tabs-wrapper >}}
-{{% code-tabs %}}
-[Node.js](#nodejs)
-{{% /code-tabs %}}
-{{% code-tab-content %}}
-
-Flux query for devices in InfluxDB.
-The query doesn't return device API tokens unless a device ID is specified.
-
-```js
-
-const deviceFilter =
-  deviceId !== undefined
-    ? flux` and r.deviceId == "${deviceId}"`
-    : flux` and r._field != "token"`
-const fluxQuery = flux`from(bucket:${INFLUX_BUCKET_AUTH})
-  |> range(start: 0)
-  |> filter(fn: (r) => r._measurement == "deviceauth"${deviceFilter})
-  |> last()`
-
-```
-
-{{% /code-tab-content %}}
-{{< /code-tabs-wrapper >}}
-
-{{% caption %}}[/app/server/influxdb/devices.js line 18](https://github.com/bonitoo-io/iot-center-v2/blob/f5b4a0b663e2e14bcd4f6fddb35cab2de216e6b6/app/server/influxdb/devices.js#L18){{% /caption %}}
-
-### IoT Center: device details
-
-IoT Center displays configuration details for a registered IoT device.
-IoT Center API composes device configuration from the device's authorization and your InfluxDB configuration properties.
-
