@@ -1,36 +1,42 @@
 ## Build a starter Python IoT app with the InfluxDB API and client libraries
 
-This guide is for python developers who want to build Internet-of-Things (IoT) applications using the InfluxDB API and client libraries.
-InfluxDB API client libraries are maintained by InfluxData and the user community. As a developer, client libraries enable you to take advantage of:
-- idioms for InfluxDB requests, responses, and errors
-- common patterns in a familiar programming language
+This guide is for Python developers who want to build applications using the InfluxDB API and client libraries.
+InfluxDB API client libraries are maintained by InfluxData and the user community. As a developer, client libraries let you take advantage of:
+- Idioms for InfluxDB requests, responses, and errors
+- Common patterns in a familiar programming language
 
-In this guide, you'll walk through the basics of using the InfluxDB API and Python
-client libraries in the context of building a real application as we
-deconstruct the flow of events and data between the app, devices, and InfluxDB.
-You'll see code samples that use InfluxDB API python client libraries to
+In this guide, you'll use the InfluxDB API and Python client libraries to build a real application, and learn the basics by 
+deconstructing the flow of events and data between the app, devices, and InfluxDB.
+
+You'll see code samples that use InfluxDB API Python client libraries to
 manage IoT devices, write data to InfluxDB, query data from InfluxDB, create visualizations, and monitor the health of devices and the application itself.
 
 
 ## Contents
+### InfluxDB API Overview
+1. [InfluxDB API basics](#influxdb-api-basics)
+2. [InfluxDB URL](#influxdb-url)
+3. [Data formats](#data-formats)
+4. [Responses](#responses)
+5. [Resources in InfluxDB](#resources-in-influxdb)
+
+### Tutorial Guide
 From start to finish, you will:
-- [Create a UI dashboard using Jinja](#create-iot-center-dashboard)
-- [Setup InfluxDB](#install-influxdb)
-- [Install influxdb-client package](#install-influxdb-client-package)
-- [Create a configuration file for authentication with InfluxDB](#create-config.ini)
-- [Create a virtual IoT device](#create-iot-virtual-device)
-- [Store virtual IoT device to InfluxDB using the API](#store-virtual-iot-device-to-influxdb)
-- [Query bucket for IoT device using the API](#query-bucket-for-device)
-- [Write telemetry data to InfluxDB using the API](#write-telemetry-data)
-- [Query telemetry data in InfluxDB using the API](#query-telemetry-data)
+1. [Set up InfluxDB](#set-up-influxdb)
+2. [Create a web server](#introducing-iot-center)
+   1. [Create a UI dashboard using Jinja](#create-iot-center)
+   2. [Install influxdb-client package](#install-influxdb-client-package)
+   3. [Create a configuration file for authentication with InfluxDB](#create-config.ini)
+3. [Create a virtual IoT device](#create-iot-virtual-device)
+4. [Develop with the API](#develop-with-the-api)
+   1. [Store virtual IoT device to InfluxDB using the API](#store-virtual-iot-device-to-influxdb)
+   2. [Query bucket for IoT device using the API](#query-bucket-for-device)
+   3. [Write telemetry data to InfluxDB using the API](#write-telemetry-data)
+   4. [Query telemetry data in InfluxDB using the API](#query-telemetry-data)
+5. [Connect the UI to the API](#connect-the-ui-to-the-api) 
 
 
 ## InfluxDB API basics
-
-- [InfluxDB URL](#influxdb-url)
-- [Data formats](#data-formats)
-- [Responses](#responses)
-- [Resources in InfluxDB](#resources-in-influxdb)
 
 ### InfluxDB URL
 
@@ -154,6 +160,24 @@ To learn more about InfluxDB data elements, schemas, and design principles, see 
 
 {{% /note %}}
 
+## Set up InfluxDB
+
+If you don't already have an InfluxDB instance, [create an InfluxDB Cloud account](https://www.influxdata.com/products/influxdb-cloud/) or [install InfluxDB OSS](https://www.influxdata.com/products/influxdb/).
+
+
+### Authenticate with an InfluxDB API token
+
+For convenience in development, use an _All-Access_ token for your application to read and write with the InfluxDB API.
+To create an All-Access token, use one of the following:
+- [InfluxDB UI](influxdb/v2.1/security/tokens/create-token/#create-an-all-access-token)
+- [InfluxDB CLI](/influxdb/v2.1/security/tokens/create-token/#create-an-all-access-token-1)
+
+{{% note %}}
+
+For a production application, we recommend you create a token with minimal permissions and only use it with that application.
+
+{{% /note %}}
+
 ## Introducing IoT Center
 
 The IoT Center architecture has four layers:
@@ -164,7 +188,7 @@ The IoT Center architecture has four layers:
 - **IoT Center server**: Server and API receives requests from the UI, sends requests to InfluxDB,
   and processes responses from InfluxDB.
 
-## Create IoT Center 
+### Create IoT Center 
 
 You will be using Flask alongside Jinja to create your IoT Center application. 
 Flask is a micro web framework written in Python that lets you develop web applications.
@@ -195,6 +219,13 @@ install Flask and Jinja
 ```bash
 $ pip install Flask
 $ pip install Jinja
+```
+
+### Install influxdb-client Package
+Use pip to install the influxdb-client package in your virtual environment.
+Additional information regarding the package can be found [here](https://pypi.org/project/influxdb-client/)
+```bash
+$ pip install influxdb-client
 ```
 
 ### Create a Flask Application
@@ -294,33 +325,7 @@ content to be rendered in the content block:
 Now that you have a working Flask app, you're ready to connect an InfluxDB instance.
 
 
-## Install InfluxDB
-
-If you don't already have an InfluxDB instance, [create an InfluxDB Cloud account](https://www.influxdata.com/products/influxdb-cloud/) or [install InfluxDB OSS](https://www.influxdata.com/products/influxdb/).
-
-## Authenticate with an InfluxDB API token
-
-### Add an InfluxDB All-Access token
-
-For convenience in development, use an _All-Access_ token for your application to read and write with the InfluxDB API.
-To create an All-Access token, use one of the following:
-- [InfluxDB UI](influxdb/v2.1/security/tokens/create-token/#create-an-all-access-token)
-- [InfluxDB CLI](/influxdb/v2.1/security/tokens/create-token/#create-an-all-access-token-1)
-
-{{% note %}}
-
-For a production application, we recommend you create a token with minimal permissions and only use it with that application.
-
-{{% /note %}}
-
 ## Configure IoT App
-
-### Install influxdb-client Package
-Use pip to install the influxdb-client package in your virtual environment.
-Additional information regarding the package can be found [here](https://pypi.org/project/influxdb-client/)
-```bash
-$ pip install influxdb-client
-```
 
 ### Create config.ini
 
@@ -357,8 +362,8 @@ INFLUX_BUCKET_AUTH = devices_auth
 
 
 ## Create IoT Virtual Device
-You will now create a virtual IoT device. This device will generate weather data that you will store in InfluxDB. 
-Create a new directory called `api` under the top level and create a new file called `sensor.py` within the new directory.
+You will now create a virtual IoT device. This device generates weather data that you will store in InfluxDB. 
+In your top level directory, create a new directory called `api` and create a new file called `sensor.py` within the new directory.
 
 [//]: # Probably preferable to link the file rather than have the whole file written up()
 ```python
@@ -405,14 +410,16 @@ class Sensor:
             }
 ```
 
-You will be using this Sensor object and its function `generate_measurement()` to simulate weather data.
+You will use this Sensor object and its function `generate_measurement()` to simulate weather data.
 
+
+## Develop with the API
 
 ## Store Virtual IoT Device to InfluxDB
 You will now learn how to use the python client library to store the virtual device information within InfluxDB.
 Within your InfluxDB instance, you will have at least two buckets set up. 
-We will use the first bucket to store device information for your virtual device.
-The other bucket will be used to store telemetry data which we will learn more about later on in this guide.  
+You will store your virtual device information in the first bucket.
+Telemetry data from the device will be stored in the second bucket. (You will learn more about this later on in the guide).
 
 Create a new file called `devices.py` within your `api` directory. This file will hold the core functionality for your app.
 
@@ -696,7 +703,7 @@ def create_authorization(device_id) -> Authorization:
 `create_authorization()`
 
 
-## Connecting the UI to the API
+## Connect the UI to the API
 Now that the core functionality has been implemented, we can now create a UI to perform these requests.
 Your IoT Dashboard will have four main pages.
 * Query Devices
