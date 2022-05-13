@@ -322,17 +322,15 @@ content to be rendered in the content block:
   </div>
 ```
 
-Now that you have a working Flask app, you're ready to connect an InfluxDB instance.
-
 
 ## Configure IoT App
 
 ### Create config.ini
 
-The Python client library provides a client to easily interact with your InfluxDB instance. In order set up the client 
-with the correct information with connect to your InfluxDB instance, we will need to create a configuration file that the
-client can read from. 
-The client needs the following information:
+The Python client library allows you to integrate InfluxDB into your application
+and interact with your InfluxDB instance. The client needs the following 
+information to connect to your InfluxDB instance:
+
 
 * your InfluxDB [API token](#authorization) with permission to query (_read_) buckets
 and create (_write_) authorizations for IoT devices.
@@ -340,7 +338,10 @@ and create (_write_) authorizations for IoT devices.
 * your InfluxDB org ID
 * your InfluxDB bucket names
 
-We will create a file `config.ini` in the top level directory of your project and place the configuration info within it.
+To set up the client configuration, create a `config.ini` in your project's top 
+level directory.
+In `config.ini`, paste the following:
+
 ```ini
 [APP]
 INFLUX_URL = {{INFLUX_URL}}
@@ -362,8 +363,10 @@ INFLUX_BUCKET_AUTH = devices_auth
 
 
 ## Create IoT Virtual Device
-You will now create a virtual IoT device. This device generates weather data that you will store in InfluxDB. 
-In your top level directory, create a new directory called `api` and create a new file called `sensor.py` within the new directory.
+The IoT virtual device generates simulated weather data for you to store in
+InfluxDB. 
+
+In the `./api` directory of your project, create a `sensor.py` file.
 
 [//]: # Probably preferable to link the file rather than have the whole file written up()
 ```python
@@ -410,7 +413,8 @@ class Sensor:
             }
 ```
 
-You will use this Sensor object and its function `generate_measurement()` to simulate weather data.
+The Sensor object's function `generate_measurement()` will be used to simulate 
+weather data.
 
 
 ## Develop with the API
@@ -421,7 +425,8 @@ Within your InfluxDB instance, you will have at least two buckets set up.
 You will store your virtual device information in the first bucket.
 Telemetry data from the device will be stored in the second bucket. (You will learn more about this later on in the guide).
 
-Create a new file called `devices.py` within your `api` directory. This file will hold the core functionality for your app.
+In your `./api` directory, create a `devices.py` file. This file will hold the 
+core functionality for your app.
 
 ```python
 import configparser
