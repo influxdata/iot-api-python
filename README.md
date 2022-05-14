@@ -544,11 +544,13 @@ def get_device(device_id) -> {}:
                results.append((record.get_field(), record.get_value()))
     return results
 ```
+Create a `QueryApi` instance. The `QueryApi` instance queries records from a
+specified bucket using Flux. To generate the Flux query, set the bucket 
+information, range, and query filter. This query will filter on `_measurement` 
+value, `deviceauth`, and searches for any device_id that matches the passed in 
+device_id. Add clause to search for `_field`s that do not contain `token` as a 
+value.
 
-Using the `InfluxDBClient` we create a `QueryApi` instance that will allow us to query a records from a specified bucket.
-Here we generate the query itself using Flux. Within the query, we set the bucket information, range, and query filter.
-Our query filters on `_measurement` `deviceauth` and searches for any device_id that that matches our passed in device_id.
-Additionally, we add a clause to search for `_field`s that do not contain `token` as a value.
 ```python
 device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
 flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
@@ -557,20 +559,23 @@ flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
            f'|> last()'
 ```
 
-We send this query using the client and the client returns a `FluxTable` that we then parse into a list of tuples.
+The client returns a `FluxTable`. Parse the object into a list of tuples.
 ```python
 # Samples results
 [('key', 'fake_auth_id_1'), ('key', 'fake_auth_id_2')]
 ```
 
 ## Write Telemetry Data
-Now that you know how to write data to a bucket, we will simulate telemetry data and write over to InfluxDB.  
+After device information has been stored, generate telemetry data and write the
+records into InfluxDB.
 
-Within `devices.py` create a new function called `write_measurements()`. This function will take in a `device_id`
-and write simulated weather telemetry data to your second bucket.  
-We begin again by initializing our `WriteAPI` instance. We then initialize our `Sensor` and create a `Point`
-that contains data for temperature, humidity, pressure, lat, and lon. We set the `_measurement` to `environment`
-and use that as the main reference for our future queries.
+In `devices.py` create a new function `write_measurements()`. 
+This function will take in a `device_id` and write simulated weather telemetry 
+data to the second bucket. Initialize the `WriteAPI` instance. Then,
+initialize the `Sensor` object. Create a `Point` that contains data for 
+temperature, humidity, pressure, lat, and lon using the `Sensor`. 
+Set the `_measurement` value to `environment`. `environment` will be used as the
+main filter for future queries in this guide.
 
 ```python
 def write_measurements(device_id):
@@ -606,12 +611,15 @@ def write_measurements(device_id):
 ```
 
 ## Query Telemetry Data
-Once the telemetry data has been written into your bucket, you can send queries to InfluxDB to retrieve that data.  
+After telemetry data is written into your bucket, query InfluxDB to retrieve the 
+telemetry data.  
 
-Within `devices.py` create a new function called `get_measurements()`. This function will take in a `device_id`
-and query for simulated weather telemetry data produced by your virtual device. Here we query the `_measurement`
-`environment` and query for all records where `device` matches the `device_id`. We then parse the `FluxTable`
-and return each record as a dict containing all the information from each record returned.
+Within `devices.py` create a new function called `get_measurements()`. 
+This function will take in a `device_id` and query for simulated weather 
+telemetry data produced by the virtual device. Query on the `_measurement`,
+`environment` and search for all records where `device` matches the `device_id`. 
+Parse the returned `FluxTable` and return each record as a dict containing the 
+data from each record returned.
 
 ```python
 def get_measurements(device_id):
@@ -638,8 +646,8 @@ def get_measurements(device_id):
     return results
 ```
 
-We then parse the `FluxTable` and return each record as a dict containing all the information from each record returned.
-
+The code below shows how `FluxTable` is parsed and returned as a list of dicts
+for each record returned.
 ```python
 # iterate through the result(s)
     results = []
@@ -667,55 +675,6 @@ We then parse the `FluxTable` and return each record as a dict containing all th
 ]
 ```
 
-
-## Create Virtual Device Authorization with API 
-You will now learn how to use the python client library to create authorization for the virtual device.
-Authorization will give read/write permissions to your virtual device which will allow it to send data to InfluxDB.
-Within your InfluxDB instance, you will have at least two buckets set up. 
-We will use one of the buckets to store authorization information for your virtual device.
-The other bucket will be used to store telemetry data which we will learn more about later on in this guide. 
-
-Create a new file called `devices.py` within your `api` directory. 
-
-```python
-def create_authorization(device_id) -> Authorization:
-    influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
-
-    authorization_api = AuthorizationsApi(influxdb_client)
-
-    buckets_api = BucketsApi(influxdb_client)
-    buckets = buckets_api.find_bucket_by_name(config.get('APP', 'INFLUX_BUCKET_AUTH'))  # function returns only 1 bucket
-    bucket_id = buckets.id
-    org_id = buckets.org_id
-    desc_prefix = f'IoTCenterDevice: {device_id}'
-    # get bucket_id from bucket
-    org_resource = PermissionResource(org_id=config.get('APP', 'INFLUX_ORG'), type="buckets")
-    read = Permission(action="read", resource=org_resource)
-    write = Permission(action="write", resource=org_resource)
-    permissions = [read, write]
-    # authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
-    #                               permissions=permissions,
-    #                               description=desc_prefix)
-
-    authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
-                                  permissions=permissions,
-                                  description=desc_prefix)
-
-    # request = authorization_api.find_authorizations()
-    # return request
-
-    # request = authorization_api.create_authorization(authorization)
-    # return request
-
-    request = authorization_api.create_authorization(org_id=org_id, permissions=permissions)
-    return request
-```
-
-`create_authorization()`
-
-
 ## Connect the UI to the API
 Now that the core functionality has been implemented, we can now create a UI to perform these requests.
 Your IoT Dashboard will have four main pages.
@@ -724,17 +683,20 @@ Your IoT Dashboard will have four main pages.
 * Write Data
 * Query Data
 
-Within your templates directory, create the following files 
+In the `./templates` directory, create the following files 
 * `create.html`(link outs to the files. UI code explanation out of scope) (Page to create virutal IoT device)
 * `data.html` (Page to query for telemetry data)
 * `devices.html` (Page to query for device data)
 * `write.html` (Page to write telemetry data)
 
-Once those files have been created, update `base.html` and `app.py` to connect the routes.
-Without going into details regarding the UI, `app.py` serves our routes and runs our core logic. 
+After those files are created, update `base.html` and `app.py` to connect the routes.
+Without going into details regarding the UI, `app.py` serves the routes and runs
+the core logic. 
 
-For example, in our `data` route, we retrieve `device_id_input` from `data.html` when user input is submitted 
-and call `get_measurements()` with the provided input. After the query is ran, we re-render `data.html` with the query results. 
+For example, in the `data` route, `device_id_input` is retrieved from 
+`data.html` when user input is submitted. `get_measurements()` is then called 
+with the provided input. After the query is ran, `data.html` re-renders with the
+query results. 
 
 ```python
 @app.route('/data', methods=['GET', 'POST'])
@@ -747,8 +709,8 @@ def data():
         return render_template('data.html', data=results)
 ```
 
-Once the correct files have been created and updated, you can run the app to view the completed IoT Center at 
-`http://localhost:5000`
+After these files are created and updated, run the app to view the completed 
+IoT Center at `http://localhost:5000`.
 ```bash
 flask run
 ```
