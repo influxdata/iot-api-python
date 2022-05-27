@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+    <title>IOT Center</title>
+</head>
+{% extends 'base.html' %}
+<body>
+    {% block content %}
+        <h2 id="build-a-starter-python-iot-app-with-the-influxdb-api-and-client-libraries">Build a starter Python IoT app with the InfluxDB API and client libraries</h2>
+        <p>This guide is for python developers who want to build Internet-of-Things (IoT) applications using the InfluxDB API and client libraries.
+        InfluxDB API client libraries are maintained by InfluxData and the user community. As a developer, client libraries enable you to take advantage of:</p>
+        <ul>
+        <li>idioms for InfluxDB requests, responses, and errors</li>
+        <li>common patterns in a familiar programming language</li>
+        </ul>
+        <p>In this guide, you&#39;ll walk through the basics of using the InfluxDB API and Python
+        client libraries in the context of building a real application as we
+        deconstruct the flow of events and data between the app, devices, and InfluxDB.
+        You&#39;ll see code samples that use InfluxDB API python client libraries to
+        manage IoT devices, write data to InfluxDB, query data from InfluxDB, create visualizations, and monitor the health of devices and the application itself.</p>
+        <h2 id="contents">Contents</h2>
+        <p>From start to finish, you will:</p>
+        <ul>
+        <li>Create a UI dashboard using Jinja</li>
+        <li>Install the influxdb-client package</li>
+        <li><a href="#setup-influxdb">Setup InfluxDB</a></li>
+        <li><a href="#create-config.ini">Create a configuration file for authentication with InfluxDB</a></li>
+        <li><a href="#create-iot-virtual-device">Create a virtual IoT device</a></li>
+        <li><a href="#store-virtual-iot-device-to-influxdb">Store virtual IoT device to InfluxDB using the API</a></li>
+        <li><a href="#query-bucket-for-device">Query bucket for IoT device using the API</a></li>
+        <li><a href="#write-telemetry-data">Write telemetry data to InfluxDB using the API</a></li>
+        <li><a href="#query-telemetry-data">Query telemetry data in InfluxDB using the API</a></li>
+        </ul>
+
+        <h2 id="influxdb-api-basics">InfluxDB API basics</h2>
+        <ul>
+        <li><a href="#influxdb-url">InfluxDB URL</a></li>
+        <li><a href="#data-formats">Data formats</a></li>
+        <li><a href="#responses">Responses</a></li>
+        <li><a href="#resources-in-influxdb">Resources in InfluxDB</a></li>
+        </ul>
+        <h3 id="influxdb-url">InfluxDB URL</h3>
+        <p>Throughout this guide, your application will send API requests to <a href="">your InfluxDB URL</a>.</p>
+        <pre><code class="language-sh">http://localhost:8086
+        </code></pre>
+        <p>Most InfluxDB API operations you&#39;ll use in this guide are in the <code>/api/v2</code> URL path,
+        e.g.</p>
+        <pre><code class="language-sh">http://localhost:8086/api/v2/query
+        http://localhost:8086/api/v2/write
+        </code></pre>
+        <h3 id="data-formats">Data formats</h3>
+        <h4 id="line-protocol">Line protocol</h4>
+        <p>You use the line protocol format to write data to InfluxDB.</p>
+        <h4 id="csv">CSV</h4>
+        <p>The InfluxDB API returns query results in CSV format.</p>
+        <h4 id="json">JSON</h4>
+        <p>The InfluxDB API returns resources and errors in JSON format.</p>
+        <h3 id="responses">Responses</h3>
+        <p>The InfluxDB API is a REST API that accepts standard HTTP request verbs
+        and returns standard HTTP response codes. If InfluxDB sends a response body, the body
+        will have one of the following formats, depending on the endpoint and response status:</p>
+        <ul>
+        <li>JSON: responses with resources or error messages</li>
+        <li>CSV: responses with query results.</li>
+        <li>Plain text: some error responses, responses with system information</li>
+        </ul>
+        <h3 id="resources-in-influxdb">Resources in InfluxDB</h3>
+        <p><strong>Resources</strong> are InfluxDB objects that store data (.e.g. buckets) or configuration (.e.g. tasks) in InfluxDB.
+        Your application uses the InfluxDB API to create, retrieve, update, and delete resources.
+        In this guide, you&#39;ll encounter the following commonly used InfluxDB resources:</p>
+        <ul>
+        <li><a href="#organization">Organization</a></li>
+        <li><a href="#user">User</a></li>
+        <li><a href="#authorization">Authorization</a></li>
+        <li><a href="#bucket">Bucket</a></li>
+        </ul>
+
+        <h2 id="introducing-iot-center">Introducing IoT Center</h2>
+        <p>The IoT Center architecture has four layers:</p>
+        <ul>
+        <li><strong>InfluxDB API</strong>: InfluxDB v2 API.</li>
+        <li><strong>IoT device</strong>: Virtual or physical devices write IoT data to the InfluxDB API.</li>
+        <li><strong>IoT Center UI</strong>: User interface sends requests to IoT Center server and renders views for the browser.</li>
+        <li><strong>IoT Center server</strong>: Server and API receives requests from the UI, sends requests to InfluxDB,
+        and processes responses from InfluxDB.</li>
+</ul>
+
+    {% endblock %}
+
+</body>
+
+</html>

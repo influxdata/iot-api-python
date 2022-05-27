@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Devices</title>
+</head>
+<body>
+{% extends 'base.html' %}
+{% block content %}
+
+{% if data is none %}
+    <div>
+        <p>You currently do not have any virtual IoT devices registered.</p>
+    </div>
+{% else %}
+    <caption>The following is a list of your registered IoT devices.</caption>
+    <table id="data" class="table table-striped">
+        <thead>
+          <tr>
+            <th>Time</th>
+              <th>Device</th>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in data %}
+            <tr>
+              <td>{{ result._time }}</td>
+                <td>{{ result.deviceId }}</td>
+              <td>{{ result._field }}</td>
+              <td>{{ result._value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+  </table>
+{% endif %}
+{% endblock %}
+</body>
+</html>
