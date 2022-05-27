@@ -12,11 +12,6 @@ from api.sensor import Sensor
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-# TODO use global instance after tutorial guide has been written
-# influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-#                                  token=config.get('APP', 'INFLUX_TOKEN'),
-#                                  org=config.get('APP', 'INFLUX_ORG'))
-
 
 def get_buckets():
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
@@ -28,31 +23,24 @@ def get_buckets():
     return buckets
 
 
-def get_device() -> {}:
+def get_device(device_id) -> {}:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=config.get('APP', 'INFLUX_TOKEN'),
                                      org=config.get('APP', 'INFLUX_ORG'))
-
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
-    # query_api = influxdb_client.query_api()
-    # device_id = str(device_id)
-    device_filter = f'r._field != "token"'
+    device_id = str(device_id)
+    device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
     flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
                  f'|> range(start: 0) ' \
                  f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
                  f'|> last()'
-    devices = {}
 
     response = query_api.query(flux_query)
-
-    # iterate through the result(s)
-    # TODO maybe change this to only show, device_id, auth_id, auth_token?
-    # iterate through the result(s)
     results = []
     for table in response:
-        results.append(table.records[0].values)
-
+        for record in table.records:
+            results.append((record.get_field(), record.get_value()))
     return results
 
 
@@ -136,31 +124,6 @@ def get_measurements(device_id):
 
     return results
 
-
-# Creates an authorization for a deviceId and writes it to a bucket
-# def create_device(device_id) -> Authorization:
-#     device = get_device(device_id)
-#     # TODO actually need to set up and run this
-#     authorization_valid = device["key"]
-#     if authorization_valid:
-#         print(f"{device} \n This device ID is already registered and has an authorization.")
-#     else:
-#         print(f"createDeviceAuthorization: deviceId ={device_id}")
-#         authorization = create_authorization(device_id)
-#         influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-#                                          token=config.get('APP', 'INFLUX_TOKEN'),
-#                                          org=config.get('APP', 'INFLUX_ORG'))
-#
-#         write_api = influxdb_client.write_api(write_options=WriteOptions(batch_size=1))
-#         point = Point("deviceauth") \
-#             .tag("deviceId", device_id) \
-#             .field("key", authorization.id) \
-#             .field("token", authorization.token)
-#         write_api.write(bucket=config.get('APP', 'INFLUX_BUCKET_AUTH'), record=point)
-#         write_api.close()
-#         return authorization
-
-
 # TODO
 # Function should return a response code
 # Creates an authorization for a supplied deviceId
@@ -181,19 +144,10 @@ def create_authorization(device_id) -> Authorization:
     read = Permission(action="read", resource=org_resource)
     write = Permission(action="write", resource=org_resource)
     permissions = [read, write]
-    # authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
-    #                               permissions=permissions,
-    #                               description=desc_prefix)
 
     authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
                                   permissions=permissions,
                                   description=desc_prefix)
-
-    # request = authorization_api.find_authorizations()
-    # return request
-
-    # request = authorization_api.create_authorization(authorization)
-    # return request
 
     request = authorization_api.create_authorization(org_id=org_id, permissions=permissions)
     return request
