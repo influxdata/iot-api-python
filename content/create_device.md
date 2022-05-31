@@ -9,13 +9,11 @@
 The IoT Center server IoT Center `create_device()` function uses [`@influxdata/influxdb-client-apis`]() to create an authorization
 and write device information to a bucket within InfluxDB.
 
-
-
 ```python
 def create_device(device_id=None):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
 
     if device_id is None:
         device_id = str(uuid4())
