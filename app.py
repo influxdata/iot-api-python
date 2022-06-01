@@ -39,28 +39,6 @@ def create_device():
 def get_buckets():
     buckets = devices.get_buckets()
     buckets = buckets.buckets
-    # list of Bucket
-    # bucket['name']
-    # {'created_at': datetime.datetime(2022, 3, 15, 17, 22, 33, 731038, tzinfo=tzutc()),
-    #  'description': None,
-    #  'id': '11939869ae5f7415',
-    #  'labels': [],
-    #  'links': {'_self': '/api/v2/buckets/11939869ae5f7415',
-    #            'labels': '/api/v2/buckets/11939869ae5f7415/labels',
-    #            'members': '/api/v2/buckets/11939869ae5f7415/members',
-    #            'org': '/api/v2/orgs/bea7ea952287f70d',
-    #            'owners': '/api/v2/buckets/11939869ae5f7415/owners',
-    #            'write': '/api/v2/write?org=bea7ea952287f70d&bucket=11939869ae5f7415'},
-    #  'name': "sly's Bucket",
-    #  'org_id': 'bea7ea952287f70d',
-    #  'retention_rules': [{'every_seconds': 2592000,
-    #                       'shard_group_duration_seconds': None,
-    #                       'type': 'expire'}],
-    #  'rp': None,
-    #  'schema_type': 'implicit',
-    #  'type': 'user',
-    #  'updated_at': datetime.datetime(2022, 3, 15, 17, 22, 33, 731038, tzinfo=tzutc())}
-    # parse the response and create a table instead
     return render_template('buckets.html', buckets=buckets)
 
 

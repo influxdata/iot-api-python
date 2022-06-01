@@ -1,4 +1,6 @@
+from cgi import print_environ
 import configparser
+import os
 from datetime import datetime
 from uuid import uuid4
 from influxdb_client import Authorization, InfluxDBClient, Permission, PermissionResource, Point, WriteOptions
@@ -12,11 +14,10 @@ from api.sensor import Sensor
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-
 def get_buckets():
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
 
     buckets_api = influxdb_client.buckets_api()
     buckets = buckets_api.find_buckets()
@@ -25,8 +26,8 @@ def get_buckets():
 
 def get_device(device_id) -> {}:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
     device_id = str(device_id)
@@ -46,8 +47,8 @@ def get_device(device_id) -> {}:
 
 def create_device(device_id=None):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
 
     if device_id is None:
         device_id = str(uuid4())
@@ -71,8 +72,8 @@ def create_device(device_id=None):
 
 def write_measurements(device_id):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
     write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
     virtual_device = Sensor()
     coord = virtual_device.geo()
@@ -103,8 +104,8 @@ def write_measurements(device_id):
 
 def get_measurements(device_id):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
 
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
@@ -129,8 +130,8 @@ def get_measurements(device_id):
 # Creates an authorization for a supplied deviceId
 def create_authorization(device_id) -> Authorization:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
-                                     token=config.get('APP', 'INFLUX_TOKEN'),
-                                     org=config.get('APP', 'INFLUX_ORG'))
+                                     token=os.environ.get('INFLUX_TOKEN'),
+                                     org=os.environ.get('INFLUX_ORG'))
 
     authorization_api = AuthorizationsApi(influxdb_client)
 
@@ -140,15 +141,10 @@ def create_authorization(device_id) -> Authorization:
     org_id = buckets.org_id
     desc_prefix = f'IoTCenterDevice: {device_id}'
     # get bucket_id from bucket
-    org_resource = PermissionResource(org_id=config.get('APP', 'INFLUX_ORG'), type="buckets")
+    org_resource = PermissionResource(org_id=org_id, type="buckets")
     read = Permission(action="read", resource=org_resource)
     write = Permission(action="write", resource=org_resource)
     permissions = [read, write]
-
-    authorization = Authorization(org_id=config.get('APP', 'INFLUX_ORG'),
-                                  permissions=permissions,
-                                  description=desc_prefix)
-
     request = authorization_api.create_authorization(org_id=org_id, permissions=permissions)
     return request
 
