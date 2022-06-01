@@ -24,25 +24,34 @@ def get_buckets():
     return buckets
 
 
-def get_device(device_id) -> {}:
+def get_device(device_id=None) -> {}:
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=os.environ.get('INFLUX_TOKEN'),
                                      org=os.environ.get('INFLUX_ORG'))
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
-    device_id = str(device_id)
-    device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+    device_filter = ''
+    if device_id:
+        device_id = str(device_id)
+        device_filter = f'r.deviceId == "{device_id}" and r._field != "token"'
+    else:
+        device_filter = f'r._field != "token"'
+
     flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET_AUTH")}") ' \
                  f'|> range(start: 0) ' \
                  f'|> filter(fn: (r) => r._measurement == "deviceauth" and {device_filter}) ' \
                  f'|> last()'
-
+    
     response = query_api.query(flux_query)
-    results = []
+    result = []
     for table in response:
         for record in table.records:
-            results.append((record.get_field(), record.get_value()))
-    return results
+            try:
+                'updatedAt' in record
+            except KeyError:
+                record['updatedAt'] = record.get_time()
+            result.append(record.values)
+    return result
 
 
 def create_device(device_id=None):
