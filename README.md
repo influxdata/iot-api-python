@@ -104,7 +104,7 @@ eval "$(pdm --pep582)"
 To start the Flask application, enter the following command into your terminal:
 
 ```bash
-flask run
+flask run -h localhost -p 5200
 ```
 
-To view the application, visit <http://localhost:5000> in your browser.
+To view the application, visit <http://localhost:5200> in your browser.
