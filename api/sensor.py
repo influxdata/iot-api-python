@@ -22,7 +22,6 @@ class Sensor:
         self.temperature = None
         self.pressure = None
         self.humidity = None
-        self.geo = None
 
     def generate_measurement(self):
         return round(random.uniform(0, 100))

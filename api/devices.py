@@ -1,15 +1,18 @@
 from cgi import print_environ
 import configparser
+import json
 import os
 from datetime import datetime
 from uuid import uuid4
 from influxdb_client import Authorization, InfluxDBClient, Permission, PermissionResource, Point, WriteOptions
 from influxdb_client.client.authorizations_api import AuthorizationsApi
 from influxdb_client.client.bucket_api import BucketsApi
+from influxdb_client.client.flux_table import FluxStructureEncoder
 from influxdb_client.client.query_api import QueryApi
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from api.sensor import Sensor
+from influxdb_client.domain.dialect import Dialect
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -50,6 +53,7 @@ def get_device(device_id=None) -> {}:
                 'updatedAt' in record
             except KeyError:
                 record['updatedAt'] = record.get_time()
+                record[record.get_field()] = record.get_value()
             result.append(record.values)
     return result
 
@@ -78,8 +82,12 @@ def create_device(device_id=None):
     # Return None on failure
     return None
 
+def write_measurements(device_ids):
+    for device_id in device_ids:
+        print(f"Writing measurements for: {device_id}")
+        write_measurement(device_id)
 
-def write_measurements(device_id):
+def write_measurement(device_id):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=os.environ.get('INFLUX_TOKEN'),
                                      org=os.environ.get('INFLUX_ORG'))
@@ -125,14 +133,18 @@ def get_measurements(device_id):
                  f'|> filter(fn: (r) => r._measurement == "environment" and {device_filter}) ' \
                  f'|> last()'
 
-    response = query_api.query(flux_query)
-
-    # iterate through the result(s)
-    results = []
-    for table in response:
-        results.append(table.records[0].values)
-
-    return results
+    result = query_api.query_csv(flux_query,
+                                   dialect=Dialect(
+                                       header=True,
+                                       delimiter=",",
+                                       comment_prefix="#",
+                                       annotations=['group', 'datatype', 'default'],
+                                       date_time_format="RFC3339"))
+    
+    response = ''
+    for row in result:
+        response += (',').join(row) + ('\n')
+    return response
 
 # TODO
 # Function should return a response code

@@ -107,14 +107,36 @@ def api_get_devices():
     return _corsify_actual_response(make_response(data))
 
 
-# On submit function for /create
-@app.route('/api/device/create', methods=['POST'])
+@app.route('/api/devices/<string:device_id>/measurements', methods=['GET'])
+def api_get_measurements(device_id):
+    if request.method == "OPTIONS": # CORS preflight
+        return _build_cors_preflight_response()
+    data = devices.get_measurements(device_id)
+    response = make_response(data, 200, {'content-type': 'application/csv'})
+    return _corsify_actual_response(response)
+
+
+@app.route('/api/devices/generate', methods=['POST'])
+def api_generate_data():
+    if request.method == "OPTIONS": # CORS preflight
+        return _build_cors_preflight_response()
+    print(request.json['deviceIds'])
+    data = devices.write_measurements(request.json['deviceIds'])
+    return _corsify_actual_response(jsonify(data))
+
+
+@app.route('/api/devices/create', methods=['POST'])
 def api_create_device():
     if request.method == "OPTIONS": # CORS preflight
         return _build_cors_preflight_response()
-    device_id = request.form.get('device_id_input', None)
-    device_id = devices.create_device(device_id)
-    return _corsify_actual_response(jsonify({ 'deviceID': device_id}))
+    content_type = request.headers.get('Content-Type')
+    if (content_type == 'application/json'):
+        json = request.json
+        return json
+    else:
+        return 'Content-Type not supported!'
+    device_id = devices.create_device(request.json.device_id)
+    return _corsify_actual_response(jsonify({ 'deviceId': device_id}))
 
 
 @app.route('/api/buckets')
@@ -130,24 +152,6 @@ def api_api_get_buckets():
 def api_auth():
     response = devices.create_authorization('test_id')
     return _corsify_actual_response(jsonify(response))
-
-
-@app.route('/api/write', methods=['POST'])
-def api_write():
-    if request.method == "OPTIONS": # CORS preflight
-        return _build_cors_preflight_response()
-    device_id = request.form.get('device_id_input', None)
-    device_id = devices.write_measurements(device_id)
-    return _corsify_actual_response(jsonify({ 'deviceID': device_id}))
-
-
-@app.route('/api/data', methods=['GET', 'POST'])
-def api_data():
-    if request.method == "OPTIONS": # CORS preflight
-        return _build_cors_preflight_response()
-    device_id = request.form.get('device_id_input', None)
-    results = devices.get_measurements(device_id)
-    return _corsify_actual_response(jsonify(results))
 
 
 def _build_cors_preflight_response():
