@@ -119,21 +119,14 @@ def write_measurement(device_id):
     return None
 
 
-def get_measurements(device_id):
+def get_measurements(query):
     influxdb_client = InfluxDBClient(url=config.get('APP', 'INFLUX_URL'),
                                      token=os.environ.get('INFLUX_TOKEN'),
                                      org=os.environ.get('INFLUX_ORG'))
 
     # Queries must be formatted with single and double quotes correctly
     query_api = QueryApi(influxdb_client)
-    device_id = str(device_id)
-    device_filter = f'r.device == "{device_id}"'
-    flux_query = f'from(bucket: "{config.get("APP", "INFLUX_BUCKET")}") ' \
-                 f'|> range(start: 0) ' \
-                 f'|> filter(fn: (r) => r._measurement == "environment" and {device_filter}) ' \
-                 f'|> last()'
-
-    result = query_api.query_csv(flux_query,
+    result = query_api.query_csv(query,
                                    dialect=Dialect(
                                        header=True,
                                        delimiter=",",

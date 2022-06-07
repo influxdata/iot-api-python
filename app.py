@@ -107,12 +107,16 @@ def api_get_devices():
     return _corsify_actual_response(make_response(data))
 
 
-@app.route('/api/devices/<string:device_id>/measurements', methods=['GET'])
+@app.route('/api/devices/<string:device_id>/measurements', methods=['POST'])
 def api_get_measurements(device_id):
     if request.method == "OPTIONS": # CORS preflight
         return _build_cors_preflight_response()
-    data = devices.get_measurements(device_id)
-    response = make_response(data, 200, {'content-type': 'application/csv'})
+    query = request.get_json()['query']
+    if query is not None:
+      data = devices.get_measurements(query)
+      response = make_response(data, 200, {'content-type': 'application/csv'})
+    else:
+      response = make_response('Request is missing query', 404)  
     return _corsify_actual_response(response)
 
 
