@@ -58,10 +58,10 @@ Create and activate a Python virtual environment for the new project.
 ```bash
 # Create a new virtual environment named "virtualenv"
 # Python 3.8+
-$ python -m venv virtualenv
+python -m venv virtualenv
 
 # Activate the virtualenv (OS X & Linux)
-$ source virtualenv/bin/activate
+source virtualenv/bin/activate
 ```
 
 ### Install PDM package manager
