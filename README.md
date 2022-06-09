@@ -28,12 +28,14 @@ cd iot-api-python
 
 1. If you don't already have an InfluxDB instance, [create an InfluxDB Cloud account](https://www.influxdata.com/products/influxdb-cloud/) or [install InfluxDB OSS](https://www.influxdata.com/products/influxdb/).
 
-2. Set environment variables for `INFLUX_TOKEN` and `INFLUX_ORG`
+2. Set environment variables for `INFLUX_TOKEN` and `INFLUX_ORG`--for example, enter the following commands into your terminal:
 
    ```bash
    export INFLUX_TOKEN=<INFLUX_TOKEN>
    export INFLUX_ORG=<INFLUX_ORG_ID>
    ```
+
+   Replace the following:
 
    - **`<INFLUX_TOKEN>`**: your InfluxDB [API token](#authorization) with permission to query (_read_) buckets and create (_write_) authorizations for devices.
    - **`<INFLUX_ORG_ID>`**: your InfluxDB organization ID.
@@ -42,18 +44,19 @@ cd iot-api-python
 
    ```ini
    [APP]
-   INFLUX_URL = http://localhost:8086
+   INFLUX_URL = <INFLUX_URL>
    INFLUX_BUCKET = iot_center
    INFLUX_BUCKET_AUTH = iot_center_devices
    ```
 
    Replace the following:
 
-   - **`<INFLUX_URL>`**: your InfluxDB instance URL.
+   - **`<INFLUX_URL>`**: your InfluxDB instance URL--for example, the default OSS URL `http://localhost:8086`.
 
 ### Install and activate the Python environment
 
 Create and activate a Python virtual environment for the new project.
+Enter the following commands into your terminal:
 
 ```bash
 # Create a new virtual environment named "virtualenv"
