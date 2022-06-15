@@ -82,7 +82,7 @@ def data():
 # /api routes
 
 @app.route('/api/buckets')
-def api_api_get_buckets():
+def api_get_buckets():
     if request.method == "OPTIONS": # CORS preflight
         return _build_cors_preflight_response()
     buckets = devices.get_buckets()
