@@ -148,18 +148,18 @@ def create_authorization(device_id) -> Authorization:
                                      org=os.environ.get('INFLUX_ORG'))
 
     authorization_api = AuthorizationsApi(influxdb_client)
-
+    # get bucket_id from bucket
     buckets_api = BucketsApi(influxdb_client)
-    buckets = buckets_api.find_bucket_by_name(config.get('APP', 'INFLUX_BUCKET_AUTH'))  # function returns only 1 bucket
+    buckets = buckets_api.find_bucket_by_name(config.get('APP', 'INFLUX_BUCKET'))  # function returns only 1 bucket
     bucket_id = buckets.id
     org_id = buckets.org_id
     desc_prefix = f'IoTCenterDevice: {device_id}'
-    # get bucket_id from bucket
-    org_resource = PermissionResource(org_id=org_id, type="buckets")
+    org_resource = PermissionResource(org_id=org_id, id=bucket_id, type="buckets")
     read = Permission(action="read", resource=org_resource)
     write = Permission(action="write", resource=org_resource)
     permissions = [read, write]
-    request = authorization_api.create_authorization(org_id=org_id, permissions=permissions)
+    authorization = Authorization(org_id=org_id, permissions=permissions, description=desc_prefix)
+    request = authorization_api.create_authorization(authorization)
     return request
 
 
