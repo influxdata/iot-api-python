@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./__pypackages__/3.8/lib"
+    ]
+}

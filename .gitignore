@@ -1,4 +1,5 @@
 /ve/
+/virtualenv/
 __*__
 .idea/
 .pdm*
