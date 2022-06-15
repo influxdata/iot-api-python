@@ -1,7 +1,9 @@
-#iot-api-python
+# iot-api-python
 
-This project is an example Flask and React application that uses the InfluxDB API client library for Python.
-The application is an adaptation of [InfluxData IoT Center](https://github.com/bonitoo-io/iot-center-v2), intentionally simplified to accompany the InfluxData IoT Starter tutorial.
+This example project provides a Python server-side REST API that interacts with InfluxDB.
+It is an adaptation of [InfluxData IoT Center](https://github.com/bonitoo-io/iot-center-v2), simplified to accompany the InfluxData IoT Starter tutorial.
+You can consume this API with the example [iot-api-ui](https://github.com/influxdata/iot-api-ui) React frontend.
+The project uses the [Flask](https://palletsprojects.com/p/flask/) framework and the InfluxDB API client library for Python.
 
 ## Features
 
@@ -10,25 +12,22 @@ This application demonstrates how you can use InfluxDB client libraries to do th
 - Create and manage InfluxDB authorizations (API tokens and permissions).
 - Write and query device metadata in InfluxDB.
 - Write and query telemetry data in InfluxDB.
-- Generate data visualizations with the InfluxDB UI libraries.
+- Generate data visualizations with the InfluxDB Giraffe library.
 
 ## Get started
 
-### Clone this project
+To learn how to create the app from scratch, follow the IoT Starter tutorial.
+To run the app, do the following:
 
-To clone the repo and change to the project directory,
-enter the following commands into your terminal:
+1. If you haven't already, [create an InfluxDB Cloud account](https://www.influxdata.com/products/influxdb-cloud/) or [install InfluxDB OSS](https://www.influxdata.com/products/influxdb/).
+2. Clone this repository to your machine.
+3. Change to the directory--for example, enter the following code into the terminal:
 
-```bash
-git@github.com:influxdata/iot-api-python.git
-cd iot-api-python
-```
+   ```bash
+   cd ./iot-api-python
+   ```
 
-### Set up InfluxDB
-
-1. If you don't already have an InfluxDB instance, [create an InfluxDB Cloud account](https://www.influxdata.com/products/influxdb-cloud/) or [install InfluxDB OSS](https://www.influxdata.com/products/influxdb/).
-
-2. Set environment variables for `INFLUX_TOKEN` and `INFLUX_ORG`--for example, enter the following commands into your terminal:
+4. Set environment variables for `INFLUX_TOKEN` and `INFLUX_ORG`--for example, enter the following commands into your terminal:
 
    ```bash
    export INFLUX_TOKEN=<INFLUX_TOKEN>
@@ -40,7 +39,7 @@ cd iot-api-python
    - **`<INFLUX_TOKEN>`**: your InfluxDB [API token](#authorization) with permission to query (_read_) buckets and create (_write_) authorizations for devices.
    - **`<INFLUX_ORG_ID>`**: your InfluxDB organization ID.
 
-3. If you need to adjust the defaults to match your InfluxDB instance, edit the settings in`./config.ini`:
+5. If you need to adjust the defaults to match your InfluxDB instance, edit the settings in`./config.ini`:
 
    ```ini
    [APP]
@@ -53,61 +52,49 @@ cd iot-api-python
 
    - **`<INFLUX_URL>`**: your InfluxDB instance URL--for example, the default OSS URL `http://localhost:8086`.
 
-### Install and activate the Python environment
+6. Create and activate a Python virtual environment for the project.
+   Enter the following commands into your terminal:
 
-Create and activate a Python virtual environment for the new project.
-Enter the following commands into your terminal:
+   ```bash
+   # Create a new virtual environment named "virtualenv"
+   # Python 3.8+
+   python -m venv virtualenv
 
-```bash
-# Create a new virtual environment named "virtualenv"
-# Python 3.8+
-python -m venv virtualenv
+   # Activate the virtualenv (OS X & Linux)
+   source virtualenv/bin/activate
+   ```
 
-# Activate the virtualenv (OS X & Linux)
-source virtualenv/bin/activate
-```
+7. Install `pdm` package manager for your system.
+On Linux or macOS, enter the following command into your terminal:
 
-### Install PDM package manager
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/pdm-project/pdm/main/install-pdm.py | python3 -
+   ```
 
-`pdm` is a modern package manager for Python that manages dependencies for your application.
-To install `pdm` for Linux or macOS, enter the following command into your terminal:
+   On Windows, enter the following command into your terminal:
 
-```bash
-curl -sSL https://raw.githubusercontent.com/pdm-project/pdm/main/install-pdm.py | python3 -
-For Windows
-```
+   ```bash
+   (Invoke-WebRequest -Uri https://raw.githubusercontent.com/pdm-project/pdm/main/install-pdm.py -UseBasicParsing).Content | python -
+   ```
 
-To install `pdm` for Windows, enter the following command into your terminal:
+8. Use `pdm` to install dependencies.
+   Enter the following command into your terminal:
 
-```bash
-(Invoke-WebRequest -Uri https://raw.githubusercontent.com/pdm-project/pdm/main/install-pdm.py -UseBasicParsing).Content | python -
-```
+   ```bash
+   pdm install
+   ```
 
-### Install dependencies
+9. If you use a bash terminal, you can set an environment variable to use dependencies in `pdm.lock` when you run your application scripts.
+   Enter the following command into your bash terminal:
 
-Use `pdm` to install the dependencies listed in `pdm.lock`.
-Enter the following command into your terminal:
+   ```bash
+   eval "$(pdm --pep582)"
+   ```
 
-```bash
-pdm install
-```
+10. To start the Flask application, enter the following command into your terminal:
 
-### Set the PDM environment
+    ```bash
+    flask run -h localhost -p 3001
+    ```
 
-Set your environment to use the dependencies in `pdm.lock` when you run your application scripts.
-For bash terminals, you can set an environment variable to enable **PEP 582** support.
-To set the environment variable, enter the following command into your terminal:
-
-```bash
-eval "$(pdm --pep582)"
-```
-
-### Run the application
-
-To start the Flask application, enter the following command into your terminal:
-
-```bash
-flask run -h localhost -p 5200
-```
-
-To view the application, visit <http://localhost:5200> in your browser.
+    To view the application, visit <http://localhost:3001> in your browser.
