@@ -98,4 +98,6 @@ On Linux or macOS, enter the following command into your terminal:
     ```
 
     To view the application, visit <http://localhost:3001> in your browser.
+
 11. Next, you can use the example [iot-api-ui](https://github.com/influxdata/iot-api-ui) React frontend to interact with the API.
+
