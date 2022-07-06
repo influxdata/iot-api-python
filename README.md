@@ -1,4 +1,4 @@
-# iot-api-python
+# Create a sample Python application
 
 This example project provides a Python server-side REST API that interacts with InfluxDB.
 It is an adaptation of [InfluxData IoT Center](https://github.com/bonitoo-io/iot-center-v2), simplified to accompany the InfluxData IoT Starter tutorial.
