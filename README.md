@@ -15,7 +15,7 @@ This application demonstrates how you can use InfluxDB client libraries to do th
 
 ## Tutorial and support
 
-To learn how to build this app from scratch, follow the InfluxDB v2 [OSS tutorial](https://docs.influxdata.com/influxdb/v2/api-guide/tutorials/python/) or [Cloud tutorial](https://docs.influxdata.com/influxdb/cloud/api-guide/tutorials/python/).
+To learn how to build this app from scratch, follow the [InfluxDB v2 OSS tutorial](https://docs.influxdata.com/influxdb/v2/api-guide/tutorials/python/) or [InfluxDB Cloud tutorial](https://docs.influxdata.com/influxdb/cloud/api-guide/tutorials/python/).
 The app is an adaptation of [InfluxData IoT Center](https://github.com/bonitoo-io/iot-center-v2), simplified to accompany the IoT Starter tutorial.
 
 For help, refer to the tutorials and InfluxDB documentation or use the following resources:
